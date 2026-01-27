@@ -1,7 +1,6 @@
 import streamlit as st
 import geopandas as gpd
 import plotly.express as px
-import plotly.graph_objects as go
 import requests
 from io import BytesIO
 
@@ -88,27 +87,12 @@ fig.update_traces(
 )
 
 # -----------------------------
-# 6) Dynamische, mobile-responsive Legende
+# 6) Saubere, mobile-responsive Legende
 # -----------------------------
-# Streamlit gibt keine exakte Displaygröße, aber wir können approx. per Layout width / scaling
-screen_width = st.sidebar.slider("Screen width approximation", 300, 2000, 800)  # Optional, für Test
+# Dynamische Schriftgrößen proportional zur Breite
+screen_width = st.sidebar.slider("Screen width approx (px)", 300, 2000, 800)  # Optional zum Testen
 title_font_size = max(14, min(24, screen_width // 40))
 font_size = max(10, min(18, screen_width // 60))
-padding = max(3, min(10, screen_width // 100))
-
-legend_items = [
-    'Dustin','Tobias','Philipp','Vanessa','Patricia',
-    'Kathrin','Sebastian','Sumak','Jonathan','Unassigned'
-]
-
-# Dummy-Traces nur für die Legende
-for c in legend_items:
-    fig.add_trace(go.Scattermapbox(
-        lat=[None], lon=[None],
-        mode='markers',
-        marker=dict(size=10, color=color_map[c]),
-        name=c
-    ))
 
 fig.update_layout(
     legend=dict(
