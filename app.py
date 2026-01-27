@@ -4,6 +4,7 @@ import plotly.express as px
 import requests
 from io import BytesIO
 
+# Seite ohne Sidebar, volle Breite
 st.set_page_config(layout="wide")
 st.title("🗺️ Marktaufteilung Dusteam")
 
@@ -50,7 +51,7 @@ for consultant, plz_list in plz_mapping.items():
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# 4) Farben festlegen
+# 4) Farben
 # -----------------------------
 color_map = {
     'Dustin': '#1f77b4',    # blau
@@ -79,7 +80,7 @@ fig = px.choropleth_mapbox(
     center={"lat": 51.0, "lon": 10.0},
     opacity=0.6,
     hover_data={'plz2': True, 'consultant': True},
-    height=1000
+    height=st.experimental_get_query_params().get('height', [1200])[0]  # extra hoch
 )
 
 # Hover nur Consultant + PLZ
@@ -90,4 +91,5 @@ fig.update_traces(
 # Umrisse
 fig.update_traces(marker_line_width=1, marker_line_color="black")
 
+# Karte in voller Breite
 st.plotly_chart(fig, use_container_width=True)
