@@ -4,7 +4,6 @@ import pandas as pd
 import folium
 from streamlit_folium import st_folium
 import requests
-import io
 
 st.set_page_config(layout="wide")
 st.title("🗺️ Dusteam Marktverteilung PLZ")
@@ -18,11 +17,11 @@ BUNDESLAENDER_RELEASE_TAG = "v1.0-bundeslaender"
 PLZ_RELEASE_TAG = "v1.0-plz"
 
 # -----------------------------
-# 2️⃣ GeoJSON aus Release laden (öffentlich)
+# 2️⃣ GeoJSON aus Release laden
 # -----------------------------
 def get_release_assets_urls(user, repo, tag):
     api_url = f"https://api.github.com/repos/{user}/{repo}/releases/tags/{tag}"
-    headers = {"User-Agent": "Streamlit-App"}  # wichtig, sonst blockiert GitHub
+    headers = {"User-Agent": "Streamlit-App"}  # wichtig für GitHub
     r = requests.get(api_url, headers=headers)
     r.raise_for_status()
     release_data = r.json()
@@ -32,7 +31,8 @@ def get_release_assets_urls(user, repo, tag):
 def read_geojson_from_github(url):
     r = requests.get(url)
     r.raise_for_status()
-    return gpd.read_file(io.BytesIO(r.content))
+    data = r.json()  # JSON direkt auslesen
+    return gpd.GeoDataFrame.from_features(data["features"], crs="EPSG:4326")
 
 # Bundesländer
 bundeslaender_urls = get_release_assets_urls(GITHUB_USER, REPO, BUNDESLAENDER_RELEASE_TAG)
@@ -47,8 +47,8 @@ plz_gdf = gpd.GeoDataFrame(pd.concat(plz_gdfs, ignore_index=True), crs="EPSG:432
 # 3️⃣ Consultants & Farben
 # -----------------------------
 CONSULTANTS = {
-    "Dustin": ["77", "78", "79", "88"],
-    "Tobias": ["81", "82", "83", "84"],
+    "Dustin": ["77","78","79","88"],
+    "Tobias": ["81","82","83","84"],
     "Philipp": ["32","33","40","41","42","43","44","45","46","47","48","50","51","52","53","56","57","58","59"],
     "Vanessa": ["10","11","12","13","20","21","22"],
     "Patricia": ["68","69","71","74","75","76"],
