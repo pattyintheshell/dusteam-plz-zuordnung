@@ -1,14 +1,18 @@
 import streamlit as st
 import geopandas as gpd
 import plotly.express as px
+import pandas as pd
 import requests
 from io import BytesIO
 
 st.set_page_config(layout="wide")
 st.title("🗺️ Marktaufteilung Dusteam")
 
-# PLZ GeoJSON direkt laden
+# -----------------------------
+# 1) PLZ GeoJSON direkt online laden
+# -----------------------------
 PLZ_URL = "https://raw.githubusercontent.com/tdudek/de-plz-geojson/master/plz-2stellig.geojson"
+
 r = requests.get(PLZ_URL)
 if r.status_code != 200:
     st.error(f"Fehler beim Laden der PLZ GeoJSON: {r.status_code}")
@@ -17,7 +21,9 @@ if r.status_code != 200:
 plz_gdf = gpd.read_file(BytesIO(r.content))
 plz_gdf['plz2'] = plz_gdf['plz'].astype(str).str[:2]
 
-# Consultant-Zuordnung
+# -----------------------------
+# 2) Consultant-Zuordnung
+# -----------------------------
 plz_mapping = {
     'Dustin': ['77', '78', '79', '88'],
     'Tobias': ['81', '82', '83', '84'],
@@ -32,25 +38,32 @@ plz_mapping = {
 plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_list}
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
-# Farben
+# -----------------------------
+# 3) Farben
+# -----------------------------
 color_map = {
     'Dustin': '#1f77b4', 'Tobias': '#ff7f0e', 'Philipp': '#2ca02c',
     'Vanessa': '#d62728', 'Patricia': '#9467bd', 'Kathrin': '#8c564b',
     'Sebastian': '#e377c2', 'Sumak': '#17becf', 'Jonathan': '#bcbd22',
     'Unassigned': '#c0c0c0'
 }
-category_orders = {
-    'consultant': ['Dustin','Tobias','Philipp','Vanessa','Patricia','Kathrin','Sebastian','Sumak','Jonathan','Unassigned']
-}
 
-# Karte
+# -----------------------------
+# 4) Consultant als kategorisch definieren (verhindert doppelte Legende)
+# -----------------------------
+categories = ['Dustin','Tobias','Philipp','Vanessa','Patricia','Kathrin',
+              'Sebastian','Sumak','Jonathan','Unassigned']
+plz_gdf['consultant'] = pd.Categorical(plz_gdf['consultant'], categories=categories, ordered=True)
+
+# -----------------------------
+# 5) Karte plotten
+# -----------------------------
 fig = px.choropleth_mapbox(
     plz_gdf,
     geojson=plz_gdf.geometry,
     locations=plz_gdf.index,
     color='consultant',
     color_discrete_map=color_map,
-    category_orders=category_orders,
     mapbox_style="carto-positron",
     zoom=5,
     center={"lat":51.0,"lon":10.0},
@@ -65,17 +78,20 @@ fig.update_traces(
     marker_line_color="black"
 )
 
-# Dynamische, mobile-responsive Legende
+# -----------------------------
+# 6) Mobil-responsive Legende
+# -----------------------------
+# Dynamische Schriftgrößen basierend auf Bildschirmbreite
 screen_width = st.sidebar.slider("Screen width approx (px)", 300, 2000, 800)
-title_font_size = max(14, min(24, screen_width//40))
-font_size = max(10, min(18, screen_width//60))
+title_font_size = max(14, min(24, screen_width // 40))
+font_size = max(10, min(18, screen_width // 60))
 
 fig.update_layout(
     legend=dict(
         title="Consultants",
         title_font=dict(color="black", size=title_font_size, family="Arial Black"),
         font=dict(color="black", size=font_size),
-        bgcolor="rgba(255,255,255,0.9)",
+        bgcolor="rgba(255,255,255,0.9)",  # Weiß + leicht transparent
         traceorder="normal",
         yanchor="top", y=0.99,
         xanchor="right", x=0.99
