@@ -1,6 +1,6 @@
 import streamlit as st
 import geopandas as gpd
-import plotly.express as px
+import plotly.graph_objects as go
 import pandas as pd
 import requests
 from io import BytesIO
@@ -12,7 +12,6 @@ st.title("🗺️ Marktaufteilung Dusteam")
 # 1) PLZ GeoJSON direkt online laden
 # -----------------------------
 PLZ_URL = "https://raw.githubusercontent.com/tdudek/de-plz-geojson/master/plz-2stellig.geojson"
-
 r = requests.get(PLZ_URL)
 if r.status_code != 200:
     st.error(f"Fehler beim Laden der PLZ GeoJSON: {r.status_code}")
@@ -49,49 +48,37 @@ color_map = {
 }
 
 # -----------------------------
-# 4) Consultant als kategorisch definieren (verhindert doppelte Legende)
+# 4) Karte vorbereiten
 # -----------------------------
-categories = ['Dustin','Tobias','Philipp','Vanessa','Patricia','Kathrin',
-              'Sebastian','Sumak','Jonathan','Unassigned']
-plz_gdf['consultant'] = pd.Categorical(plz_gdf['consultant'], categories=categories, ordered=True)
+fig = go.Figure()
 
-# -----------------------------
-# 5) Karte plotten
-# -----------------------------
-fig = px.choropleth_mapbox(
-    plz_gdf,
-    geojson=plz_gdf.geometry,
-    locations=plz_gdf.index,
-    color='consultant',
-    color_discrete_map=color_map,
-    mapbox_style="carto-positron",
-    zoom=5,
-    center={"lat":51.0,"lon":10.0},
-    opacity=0.6,
-    hover_data={'plz2': True, 'consultant': True},
-    height=1000
-)
-
-fig.update_traces(
-    hovertemplate="<b>Consultant:</b> %{customdata[1]}<br><b>PLZ:</b> %{customdata[0]}<extra></extra>",
-    marker_line_width=1,
-    marker_line_color="black"
-)
-
-# -----------------------------
-# 6) Mobil-responsive Legende
-# -----------------------------
-# Dynamische Schriftgrößen basierend auf Bildschirmbreite
-screen_width = st.sidebar.slider("Screen width approx (px)", 300, 2000, 800)
-title_font_size = max(14, min(24, screen_width // 40))
-font_size = max(10, min(18, screen_width // 60))
+for consultant, color in color_map.items():
+    subset = plz_gdf[plz_gdf['consultant'] == consultant]
+    fig.add_trace(
+        go.Choroplethmapbox(
+            geojson=subset.geometry.__geo_interface__,
+            locations=subset.index,
+            z=[1]*len(subset),
+            showscale=False,
+            marker_opacity=0.6,
+            marker_line_width=1,
+            marker_line_color="black",
+            name=consultant,
+            hovertemplate="<b>Consultant:</b> %{customdata[1]}<br><b>PLZ:</b> %{customdata[0]}<extra></extra>",
+            customdata=subset[['plz2','consultant']].values
+        )
+    )
 
 fig.update_layout(
+    mapbox_style="carto-positron",
+    mapbox_zoom=5,
+    mapbox_center={"lat":51.0,"lon":10.0},
+    height=1000,
     legend=dict(
         title="Consultants",
-        title_font=dict(color="black", size=title_font_size, family="Arial Black"),
-        font=dict(color="black", size=font_size),
-        bgcolor="rgba(255,255,255,0.9)",  # Weiß + leicht transparent
+        title_font=dict(color="black", size=20, family="Arial Black"),
+        font=dict(color="black", size=16),
+        bgcolor="rgba(255,255,255,0.9)",
         traceorder="normal",
         yanchor="top", y=0.99,
         xanchor="right", x=0.99
