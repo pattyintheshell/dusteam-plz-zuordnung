@@ -16,19 +16,19 @@ if r.status_code != 200:
     st.error(f"Fehler beim Laden der GeoJSON: {r.status_code}")
     st.stop()
 
-plz2_gdf = gpd.read_file(BytesIO(r.content))
+plz_gdf = gpd.read_file(BytesIO(r.content))
 
 # -----------------------------
-# 2) 2er-PLZ aus GeoJSON erstellen
+# 2) Spalte für 2er-PLZ erstellen
 # -----------------------------
-if 'plz' not in plz2_gdf.columns:
+if 'plz' not in plz_gdf.columns:
     st.error("Keine PLZ-Spalte in der GeoJSON gefunden!")
     st.stop()
 
-plz2_gdf['plz2'] = plz2_gdf['plz'].astype(str).str[:2]
+plz_gdf['plz2'] = plz_gdf['plz'].astype(str).str[:2]
 
 # -----------------------------
-# 3) Consultant-Zuordnung (nur für deine Liste)
+# 3) Consultant-Zuordnung (nur aus deiner Liste)
 # -----------------------------
 plz_mapping = {
     'Dustin': ['77', '78', '79', '88'],
@@ -42,22 +42,22 @@ plz_mapping = {
     'Jonathan': ['70', '72', '73', '89']
 }
 
-# Mapping erstellen
+# Mapping für schnelle Zuordnung
 plz2_to_consultant = {}
 for consultant, plz_list in plz_mapping.items():
     for p in plz_list:
         plz2_to_consultant[p] = consultant
 
-# Zuweisung: nur aus Liste, alles andere = "Unassigned"
-plz2_gdf['consultant'] = plz2_gdf['plz2'].apply(lambda x: plz2_to_consultant.get(x, "Unassigned"))
+# Consultant-Spalte erstellen: nur PLZ aus der Liste → sonst Unassigned
+plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
 # 4) Karte plotten
 # -----------------------------
 fig = px.choropleth_mapbox(
-    plz2_gdf,
-    geojson=plz2_gdf.geometry,
-    locations=plz2_gdf.index,
+    plz_gdf,
+    geojson=plz_gdf.geometry,
+    locations=plz_gdf.index,  # Index für Polygonzuordnung
     color='consultant',
     mapbox_style="carto-positron",
     zoom=5,
@@ -67,7 +67,7 @@ fig = px.choropleth_mapbox(
     height=800
 )
 
-# Bundesländer-Umriss hinzufügen
+# Umrisse hinzufügen
 fig.update_traces(marker_line_width=1, marker_line_color="black")
 
 st.plotly_chart(fig, use_container_width=True)
