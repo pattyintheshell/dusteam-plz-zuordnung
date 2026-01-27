@@ -3,6 +3,7 @@ import geopandas as gpd
 import pydeck as pdk
 import requests
 import io
+from shapely.geometry import Polygon, MultiPolygon
 
 st.set_page_config(layout="wide")
 st.title("🗺️ Dusteam Marktverteilung PLZ")
@@ -57,7 +58,7 @@ def load_geojson(url):
 plz_gdf = load_geojson(PLZ_URL)
 
 # -------------------------------
-# Automatisch PLZ-Spalte finden
+# PLZ-Spalte automatisch erkennen
 # -------------------------------
 if plz_gdf is not None:
     plz_col = None
@@ -66,7 +67,6 @@ if plz_gdf is not None:
             plz_col = col
             break
     if not plz_col:
-        # Fallback: erste Spalte, die integer oder string ist
         for col in plz_gdf.columns:
             if plz_gdf[col].dtype in ["int64","object"]:
                 plz_col = col
@@ -90,10 +90,16 @@ if plz_gdf is not None:
         # Farbe zuweisen
         plz_gdf["color"] = plz_gdf["Berater"].apply(lambda x: farben.get(x,[200,200,200,100]))
 
+        # -------------------------------
+        # Polygone vereinfachen
+        # -------------------------------
+        # Toleranz: 0.01 (je größer, desto weniger Detail)
+        plz_gdf["geometry"] = plz_gdf["geometry"].simplify(tolerance=0.01, preserve_topology=True)
+
         st.success(f"Daten erfolgreich geladen ✅\nPLZ-2er Gebiete: {len(plz_gdf)}")
 
         # -------------------------------
-        # Polygon-Layer für PyDeck
+        # PyDeck Polygon Layer
         # -------------------------------
         def get_coordinates(geom):
             if geom.geom_type == "Polygon":
