@@ -80,22 +80,19 @@ st.write(f"**Bundesländer:** {len(bundeslaender_gdf)}")
 st.write(f"**PLZ-Flächen:** {len(plz_gdf)}")
 
 # =========================
-# PYDECK MAP (Polygone)
+# PYDECK MAP (Zentroiden)
 # =========================
-
-# Vereinfachung, damit pydeck nicht crasht
-plz_gdf_simple = plz_gdf.copy()
-plz_gdf_simple["geometry"] = plz_gdf_simple["geometry"].simplify(0.01, preserve_topology=True)
+plz_points = plz_gdf.copy()
+plz_points["geometry"] = plz_points["geometry"].centroid
 
 layer = pdk.Layer(
-    "GeoJsonLayer",
-    plz_gdf_simple.__geo_interface__,
-    pickable=True,
-    stroked=True,
-    filled=True,
-    get_fill_color="[200, 30, 0, 80]",
+    "ScatterplotLayer",
+    plz_points,
+    get_position="[geometry.x, geometry.y]",
+    get_fill_color="[200, 30, 0, 180]",
     get_line_color="[0, 0, 0, 200]",
-    line_width_min_pixels=0.5,
+    get_radius=3000,
+    pickable=True,
 )
 
 view_state = pdk.ViewState(
