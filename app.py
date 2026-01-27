@@ -22,7 +22,8 @@ PLZ_RELEASE_TAG = "v1.0-plz"
 # -----------------------------
 def get_release_assets_urls(user, repo, tag):
     api_url = f"https://api.github.com/repos/{user}/{repo}/releases/tags/{tag}"
-    r = requests.get(api_url)
+    headers = {"User-Agent": "Streamlit-App"}  # wichtig für GitHub
+    r = requests.get(api_url, headers=headers)
     r.raise_for_status()
     release_data = r.json()
     urls = [asset['browser_download_url'] for asset in release_data['assets']]
