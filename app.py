@@ -12,7 +12,6 @@ st.title("🗺️ Dusteam Marktverteilung PLZ")
 GITHUB_USER = "pattyintheshell"
 REPO = "dusteam-plz-zuordnung"
 
-# PLZ-Dateien
 PLZ_FILES = [
     "badenwuerttemberg.geojson","bayern.geojson","berlin.geojson","brandenburg.geojson",
     "bremen.geojson","hamburg.geojson","hessen.geojson","mecklenburgvorpommern.geojson",
@@ -25,7 +24,6 @@ PLZ_URLS = [
     for name in PLZ_FILES
 ]
 
-# Bundesländer-Datei
 BUNDESLAENDER_FILE = f"https://github.com/{GITHUB_USER}/{REPO}/releases/download/v1.0-bundeslaender/bundeslaender.geojson"
 
 # --------------------------
@@ -43,7 +41,6 @@ consultants = {
     "Jonathan": ["70","72","73","89"]
 }
 
-# Farben für Consultant
 consultant_colors = {
     "Dustin": [255,0,0,150],
     "Tobias": [0,255,0,150],
@@ -58,53 +55,57 @@ consultant_colors = {
 }
 
 # --------------------------
-# GeoJSON laden
+# Daten laden
 # --------------------------
 @st.cache_data
-def load_data():
+def load_plz_data():
     gdfs = []
     for url in PLZ_URLS:
         gdf = gpd.read_file(url)
-        # PLZ-2er extrahieren
         plz_col = next((c for c in gdf.columns if c.lower() in ["plz","postcode","postal_code","zip"]), None)
         gdf["PLZ2"] = gdf[plz_col].astype(str).str[:2] if plz_col else "unknown"
-
-        # Consultant zuweisen
         gdf["Consultant"] = gdf["PLZ2"].apply(
             lambda x: next((c for c, codes in consultants.items() if x in codes), "Unassigned")
         )
-
-        # Farbe
         gdf["color"] = gdf["Consultant"].apply(lambda c: consultant_colors.get(c,[100,100,100,100]))
 
-        # Polygon in Liste konvertieren für PyDeck
-        def polygon_to_coords(geom):
-            if geom.geom_type == 'Polygon':
+        # Polygon → Liste für PyDeck
+        def poly_to_coords(geom):
+            if geom.geom_type == "Polygon":
                 return [list(geom.exterior.coords)]
-            elif geom.geom_type == 'MultiPolygon':
+            elif geom.geom_type == "MultiPolygon":
                 return [list(p.exterior.coords) for p in geom.geoms]
             else:
                 return []
-        gdf["polygon_coords"] = gdf["geometry"].apply(polygon_to_coords)
-
+        gdf["polygon_coords"] = gdf["geometry"].apply(poly_to_coords)
         gdfs.append(gdf)
+    return pd.concat(gdfs, ignore_index=True)
 
-    all_gdf = pd.concat(gdfs, ignore_index=True)
-    return gpd.GeoDataFrame(all_gdf, crs=gdfs[0].crs)
+@st.cache_data
+def load_bundeslaender():
+    gdf = gpd.read_file(BUNDESLAENDER_FILE)
+    # Polygon → Liste für PyDeck
+    def poly_to_coords(geom):
+        if geom.geom_type == "Polygon":
+            return [list(geom.exterior.coords)]
+        elif geom.geom_type == "MultiPolygon":
+            return [list(p.exterior.coords) for p in geom.geoms]
+        else:
+            return []
+    gdf["polygon_coords"] = gdf["geometry"].apply(poly_to_coords)
+    return gdf
 
 with st.spinner("Lade PLZ-2er Gebiete …"):
-    plz_gdf = load_data()
+    plz_gdf = load_plz_data()
+st.success(f"Daten geladen: {len(plz_gdf)} PLZ-2er Gebiete")
 
-st.success("Daten erfolgreich geladen ✅")
-st.write(f"**PLZ-2er Gebiete:** {len(plz_gdf)}")
-
-# --------------------------
-# Bundesländer
-# --------------------------
 with st.spinner("Lade Bundesländer …"):
-    bundeslaender_gdf = gpd.read_file(BUNDESLAENDER_FILE)
+    bundes_gdf = load_bundeslaender()
+st.success(f"Bundesländer geladen: {len(bundes_gdf)}")
 
-# Polygon-Layer für PLZ
+# --------------------------
+# PyDeck Layer
+# --------------------------
 plz_layer = pdk.Layer(
     "PolygonLayer",
     plz_gdf,
@@ -115,11 +116,10 @@ plz_layer = pdk.Layer(
     auto_highlight=True
 )
 
-# Linien-Layer für Bundesländer
 bundes_layer = pdk.Layer(
     "PolygonLayer",
-    bundeslaender_gdf,
-    get_polygon=lambda d: [list(d.exterior.coords)] if d.geom_type=="Polygon" else [list(p.exterior.coords) for p in d.geoms],
+    bundes_gdf,
+    get_polygon="polygon_coords",
     get_fill_color=[0,0,0,0],
     get_line_color=[50,50,50,150],
     stroked=True,
