@@ -3,27 +3,41 @@ import geopandas as gpd
 import pandas as pd
 import folium
 from streamlit_folium import st_folium
-import os
+import requests
 
 st.set_page_config(layout="wide")
 st.title("🗺️ Vertriebsregionen Deutschland")
 
 # -----------------------------
-# 1️⃣ GeoJSON-Dateien automatisch laden
+# 1️⃣ GitHub Repo & Release Infos
 # -----------------------------
-BUNDESLAENDER_FILE = "data/bundeslaender.geojson"
-PLZ_FOLDER = "data/PLZ/"
+GITHUB_USER = "pattyintheshell"
+REPO = "dusteam-plz-zuordnung"
+BUNDESLAENDER_RELEASE_TAG = "v1.0-bundeslaender"
+PLZ_RELEASE_TAG = "v1.0-plz"
 
-# Bundesländer laden
-bundeslaender_gdf = gpd.read_file(BUNDESLAENDER_FILE)
+# -----------------------------
+# 2️⃣ Funktion: GeoJSON URLs aus Release automatisch holen
+# -----------------------------
+def get_release_assets_urls(user, repo, tag):
+    api_url = f"https://api.github.com/repos/{user}/{repo}/releases/tags/{tag}"
+    r = requests.get(api_url)
+    r.raise_for_status()
+    release_data = r.json()
+    urls = [asset['browser_download_url'] for asset in release_data['assets']]
+    return urls
 
-# PLZ-Dateien automatisch laden
-plz_files = [os.path.join(PLZ_FOLDER, f) for f in os.listdir(PLZ_FOLDER) if f.endswith(".geojson")]
-plz_gdfs = [gpd.read_file(f) for f in plz_files]
+# Bundesländer
+bundeslaender_urls = get_release_assets_urls(GITHUB_USER, REPO, BUNDESLAENDER_RELEASE_TAG)
+bundeslaender_gdf = gpd.read_file(bundeslaender_urls[0])  # nur eine Datei
+
+# PLZ-Dateien
+plz_urls = get_release_assets_urls(GITHUB_USER, REPO, PLZ_RELEASE_TAG)
+plz_gdfs = [gpd.read_file(url) for url in plz_urls]
 plz_gdf = gpd.GeoDataFrame(pd.concat(plz_gdfs, ignore_index=True), crs="EPSG:4326")
 
 # -----------------------------
-# 2️⃣ Consultants zuordnen
+# 3️⃣ Consultants & Farben
 # -----------------------------
 CONSULTANTS = {
     "Dustin": ["77", "78", "79", "88"],
@@ -58,7 +72,7 @@ def assign_consultant(plz2):
 plz_gdf['consultant'] = plz_gdf['plz2'].apply(assign_consultant)
 
 # -----------------------------
-# 3️⃣ Map erstellen
+# 4️⃣ Karte erstellen
 # -----------------------------
 m = folium.Map(location=[51.2, 10.4], zoom_start=6, tiles="cartodbpositron")
 
@@ -76,7 +90,7 @@ for _, row in plz_gdf.iterrows():
     ).add_to(m)
 
 # -----------------------------
-# 4️⃣ Legende
+# 5️⃣ Legende
 # -----------------------------
 legend_html = "<div style='position: fixed; bottom: 50px; left: 50px; background: white; padding: 10px; border:1px solid black;'>"
 legend_html += "<b>Consultants</b><br>"
