@@ -19,9 +19,8 @@ if r.status_code != 200:
 plz2_gdf = gpd.read_file(BytesIO(r.content))
 
 # -----------------------------
-# 2) Spalte für 2er-PLZ erstellen
+# 2) 2er-PLZ aus GeoJSON erstellen
 # -----------------------------
-# Die Spalte 'plz' enthält die 2er-PLZ
 if 'plz' not in plz2_gdf.columns:
     st.error("Keine PLZ-Spalte in der GeoJSON gefunden!")
     st.stop()
@@ -29,7 +28,7 @@ if 'plz' not in plz2_gdf.columns:
 plz2_gdf['plz2'] = plz2_gdf['plz'].astype(str).str[:2]
 
 # -----------------------------
-# 3) Consultant-Zuordnung
+# 3) Consultant-Zuordnung (nur für deine Liste)
 # -----------------------------
 plz_mapping = {
     'Dustin': ['77', '78', '79', '88'],
@@ -49,8 +48,8 @@ for consultant, plz_list in plz_mapping.items():
     for p in plz_list:
         plz2_to_consultant[p] = consultant
 
-# Zuweisung, fehlende PLZ als "Unassigned"
-plz2_gdf['consultant'] = plz2_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
+# Zuweisung: nur aus Liste, alles andere = "Unassigned"
+plz2_gdf['consultant'] = plz2_gdf['plz2'].apply(lambda x: plz2_to_consultant.get(x, "Unassigned"))
 
 # -----------------------------
 # 4) Karte plotten
