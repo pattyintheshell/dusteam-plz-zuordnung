@@ -57,57 +57,79 @@ def load_geojson(url):
 plz_gdf = load_geojson(PLZ_URL)
 
 # -------------------------------
-# Berater-Spalte hinzufügen
+# Automatisch PLZ-Spalte finden
 # -------------------------------
 if plz_gdf is not None:
-    # Extrahiere 2-stellige PLZ als String
-    plz_gdf["plz_2er"] = plz_gdf["PLZ"].astype(str).str[:2]
+    plz_col = None
+    for col in plz_gdf.columns:
+        if col.lower() in ["plz","postcode","plz2","zip","zip_code"]:
+            plz_col = col
+            break
+    if not plz_col:
+        # Fallback: erste Spalte, die integer oder string ist
+        for col in plz_gdf.columns:
+            if plz_gdf[col].dtype in ["int64","object"]:
+                plz_col = col
+                break
 
-    def get_berater(plz2):
-        for name, plz_list in berater_mapping.items():
-            if plz2 in plz_list:
-                return name
-        return "Unassigned"
+    if not plz_col:
+        st.error("Keine PLZ-Spalte gefunden.")
+    else:
+        # PLZ-2er extrahieren
+        plz_gdf["plz_2er"] = plz_gdf[plz_col].astype(str).str[:2]
 
-    plz_gdf["Berater"] = plz_gdf["plz_2er"].apply(get_berater)
+        # Berater zuordnen
+        def get_berater(plz2):
+            for name, plz_list in berater_mapping.items():
+                if plz2 in plz_list:
+                    return name
+            return "Unassigned"
 
-    # Farbe zuweisen
-    plz_gdf["color"] = plz_gdf["Berater"].apply(lambda x: farben.get(x,[200,200,200,100]))
+        plz_gdf["Berater"] = plz_gdf["plz_2er"].apply(get_berater)
 
-    st.success(f"Daten erfolgreich geladen ✅\nPLZ-2er Gebiete: {len(plz_gdf)}")
+        # Farbe zuweisen
+        plz_gdf["color"] = plz_gdf["Berater"].apply(lambda x: farben.get(x,[200,200,200,100]))
 
-    # -------------------------------
-    # PyDeck Polygon Layer
-    # -------------------------------
-    plz_gdf["coordinates"] = plz_gdf["geometry"].apply(
-        lambda poly: [list(poly.exterior.coords)] if poly.geom_type=="Polygon" else [list(p.exterior.coords) for p in poly.geoms]
-    )
+        st.success(f"Daten erfolgreich geladen ✅\nPLZ-2er Gebiete: {len(plz_gdf)}")
 
-    layer = pdk.Layer(
-        "PolygonLayer",
-        plz_gdf,
-        get_polygon="coordinates",
-        get_fill_color="color",
-        get_line_color=[0,0,0,200],
-        pickable=True,
-        auto_highlight=True,
-    )
+        # -------------------------------
+        # Polygon-Layer für PyDeck
+        # -------------------------------
+        def get_coordinates(geom):
+            if geom.geom_type == "Polygon":
+                return [list(geom.exterior.coords)]
+            elif geom.geom_type == "MultiPolygon":
+                return [list(p.exterior.coords) for p in geom.geoms]
+            else:
+                return []
 
-    view_state = pdk.ViewState(
-        longitude=10.5,
-        latitude=51.2,
-        zoom=5,
-        min_zoom=4,
-        max_zoom=10,
-        pitch=0,
-    )
+        plz_gdf["coordinates"] = plz_gdf["geometry"].apply(get_coordinates)
 
-    r = pdk.Deck(
-        layers=[layer],
-        initial_view_state=view_state,
-        tooltip={"text": "{Berater}\nPLZ-2er: {plz_2er}"}
-    )
+        layer = pdk.Layer(
+            "PolygonLayer",
+            plz_gdf,
+            get_polygon="coordinates",
+            get_fill_color="color",
+            get_line_color=[0,0,0,200],
+            pickable=True,
+            auto_highlight=True,
+        )
 
-    st.pydeck_chart(r)
+        view_state = pdk.ViewState(
+            longitude=10.5,
+            latitude=51.2,
+            zoom=5,
+            min_zoom=4,
+            max_zoom=10,
+            pitch=0,
+        )
+
+        r = pdk.Deck(
+            layers=[layer],
+            initial_view_state=view_state,
+            tooltip={"text": "{Berater}\nPLZ-2er: {plz_2er}"}
+        )
+
+        st.pydeck_chart(r)
 else:
     st.error("Keine Daten zum Anzeigen.")
