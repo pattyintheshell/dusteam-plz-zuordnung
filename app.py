@@ -36,13 +36,13 @@ plz_url = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/releases/dow
 plz_2er = load_geojson_release_asset(plz_url)
 
 # -----------------------------
-# 3) 2er-PLZ aus vorhandener Spalte ableiten
+# 3) 2er-PLZ aus 'AGS_0' ableiten
 # -----------------------------
-# Wir nehmen 'GEN', falls vorhanden, sonst Index als Key
-if 'GEN' in plz_2er.columns:
-    plz_2er['plz2'] = plz_2er['GEN'].astype(str).str[:2]
+if 'AGS_0' in plz_2er.columns:
+    plz_2er['plz2'] = plz_2er['AGS_0'].astype(str).str[:2]
 else:
-    plz_2er['plz2'] = plz_2er.index.astype(str)
+    st.error("Spalte 'AGS_0' nicht gefunden! Bitte prüfen.")
+    st.stop()
 
 # -----------------------------
 # 4) Consultant-Zuordnung fix
