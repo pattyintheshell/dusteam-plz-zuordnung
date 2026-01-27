@@ -9,9 +9,9 @@ st.set_page_config(layout="wide")
 st.title("🗺️ Marktaufteilung Dusteam")
 
 # -----------------------------
-# 1) PLZ GeoJSON direkt online laden
+# 1) PLZ GeoJSON direkt von T. Dudek laden
 # -----------------------------
-PLZ_URL = "https://raw.githubusercontent.com/pattyintheshell/dusteam-plz-zuordnung/main/plz_deutschland.geojson"
+PLZ_URL = "https://raw.githubusercontent.com/tdudek/GeoJSON-Deutschland-PLZ/master/plz-deutschland.geojson"
 
 r = requests.get(PLZ_URL)
 if r.status_code != 200:
@@ -81,19 +81,17 @@ fig.update_traces(
 # -----------------------------
 # 6) Echte schwebende, responsive Legende
 # -----------------------------
-# Berechnung der Schriftgröße proportional zur Höhe
 height = 1000
 title_font_size = int(height / 30)
 font_size = int(height / 40)
 padding = int(height / 80)
 
-# Legenden-Items in Reihenfolge + "Unassigned" unten
 legend_items = ['Dustin','Tobias','Philipp','Vanessa','Patricia','Kathrin','Sebastian','Sumak','Jonathan','Unassigned']
 
 # Dummy-Traces für schwebende Legende
-for i, c in enumerate(legend_items):
+for c in legend_items:
     fig.add_trace(go.Scattermapbox(
-        lat=[None], lon=[None],  # keine Punkte auf der Karte
+        lat=[None], lon=[None],
         mode='markers',
         marker=dict(size=10, color=color_map[c]),
         name=c
@@ -112,7 +110,7 @@ fig.update_layout(
         yanchor="top",
         y=0.99,
         xanchor="right",
-        x=0.99,
+        x=0.99
     )
 )
 
