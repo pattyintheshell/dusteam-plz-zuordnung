@@ -1,6 +1,6 @@
 import streamlit as st
 import geopandas as gpd
-import plotly.express as px
+import plotly.graph_objects as go
 import pandas as pd
 import requests
 from io import BytesIO
@@ -9,7 +9,7 @@ st.set_page_config(layout="wide")
 st.title("🗺️ Marktaufteilung Dusteam")
 
 # -----------------------------
-# 1) PLZ GeoJSON direkt online laden
+# 1) PLZ GeoJSON laden
 # -----------------------------
 PLZ_URL = "https://raw.githubusercontent.com/tdudek/de-plz-geojson/master/plz-2stellig.geojson"
 r = requests.get(PLZ_URL)
@@ -24,8 +24,8 @@ plz_gdf['plz2'] = plz_gdf['plz'].astype(str).str[:2]
 # 2) Consultant-Zuordnung
 # -----------------------------
 plz_mapping = {
-    'Dustin': ['77', '78', '79', '88'],
-    'Tobias': ['81', '82', '83', '84'],
+    'Dustin': ['77','78','79','88'],
+    'Tobias': ['81','82','83','84'],
     'Philipp': ['32','33','40','41','42','43','44','45','46','47','48','50','51','52','53','56','57','58','59'],
     'Vanessa': ['10','11','12','13','20','21','22'],
     'Patricia': ['68','69','71','74','75','76'],
@@ -41,54 +41,71 @@ plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassign
 # 3) Farben
 # -----------------------------
 color_map = {
-    'Dustin': '#1f77b4', 'Tobias': '#ff7f0e', 'Philipp': '#2ca02c',
-    'Vanessa': '#d62728', 'Patricia': '#9467bd', 'Kathrin': '#8c564b',
-    'Sebastian': '#e377c2', 'Sumak': '#17becf', 'Jonathan': '#bcbd22',
-    'Unassigned': '#c0c0c0'
+    'Dustin': '#1f77b4','Tobias': '#ff7f0e','Philipp': '#2ca02c','Vanessa': '#d62728',
+    'Patricia': '#9467bd','Kathrin': '#8c564b','Sebastian': '#e377c2','Sumak': '#17becf',
+    'Jonathan': '#bcbd22','Unassigned': '#c0c0c0'
 }
 
 # -----------------------------
-# 4) Consultant als Categorical, Reihenfolge festlegen
+# 4) Legende-Reihenfolge
 # -----------------------------
 categories = ['Dustin','Tobias','Philipp','Vanessa','Patricia','Kathrin',
               'Sebastian','Sumak','Jonathan','Unassigned']
-plz_gdf['consultant'] = pd.Categorical(plz_gdf['consultant'], categories=categories, ordered=True)
 
 # -----------------------------
-# 5) Karte mit px.choropleth_mapbox
+# 5) Karte bauen
 # -----------------------------
-fig = px.choropleth_mapbox(
-    plz_gdf,
-    geojson=plz_gdf.geometry,
-    locations=plz_gdf.index,
-    color='consultant',
-    color_discrete_map=color_map,
-    mapbox_style="carto-positron",
-    zoom=5,
-    center={"lat":51.0,"lon":10.0},
-    opacity=0.6,
-    hover_data={'plz2': True, 'consultant': True},
-    height=1000
-)
+fig = go.Figure()
 
-fig.update_traces(
-    hovertemplate="<b>Consultant:</b> %{customdata[1]}<br><b>PLZ:</b> %{customdata[0]}<extra></extra>",
-    marker_line_width=1,
-    marker_line_color="black"
-)
+for consultant in categories:
+    subset = plz_gdf[plz_gdf['consultant']==consultant]
+    for _, row in subset.iterrows():
+        if row.geometry.type == "Polygon":
+            coords = row.geometry.exterior.coords
+        else:  # MultiPolygon
+            coords = []
+            for poly in row.geometry.geoms:
+                coords += list(poly.exterior.coords)
+        lons, lats = zip(*coords)
+        fig.add_trace(go.Scattermapbox(
+            lon=lons,
+            lat=lats,
+            mode='lines',
+            fill='toself',
+            fillcolor=color_map[consultant],
+            line=dict(color='black', width=1),
+            name=consultant,
+            hoverinfo='text',
+            text=f"PLZ: {row['plz2']}<br>Consultant: {consultant}",
+            showlegend=False if consultant=="Unassigned" else True
+        ))
+
+# Dummy-Traces nur für die Legende, exakt 1 Eintrag pro Consultant
+for consultant in categories:
+    fig.add_trace(go.Scattermapbox(
+        lon=[None], lat=[None],
+        mode='markers',
+        marker=dict(size=10, color=color_map[consultant]),
+        name=consultant,
+        showlegend=True
+    ))
 
 # -----------------------------
-# 6) Legende: sauber, mobil-skalierbar, weiß + leicht transparent
+# 6) Layout
 # -----------------------------
 fig.update_layout(
+    mapbox_style="carto-positron",
+    mapbox_zoom=5,
+    mapbox_center={"lat":51.0,"lon":10.0},
+    height=1000,
     legend=dict(
         title="Consultants",
         title_font=dict(color="black", size=20, family="Arial Black"),
         font=dict(color="black", size=16),
         bgcolor="rgba(255,255,255,0.9)",
-        traceorder="normal",
         yanchor="top", y=0.99,
-        xanchor="right", x=0.99
+        xanchor="right", x=0.99,
+        traceorder="normal"
     )
 )
 
