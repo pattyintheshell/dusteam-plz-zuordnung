@@ -36,23 +36,41 @@ plz_url = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/releases/dow
 plz_2er = load_geojson_release_asset(plz_url)
 
 # -----------------------------
-# 3) Consultant-Zuordnung
+# 3) 2er-PLZ aus einer existierenden Spalte ableiten
 # -----------------------------
-# Jede Geometrie ist ein „2er-Gebiet“, hier manuell zuordnen
-# Du musst die keys anpassen, z.B. nach einem Feld wie 'GEN' oder 'AGS'
-plz_mapping = {
-    # Beispiel: 'GEN' = Ortsname, oder Index als Key
-    0: 'Anna',
-    1: 'Ben',
-    2: 'Clara',
-    3: 'David',
-    # weitere Geometrien hier ergänzen
+# Wir nehmen eine Spalte, die die erste 2 Ziffern als PLZ2 enthält
+# Hier nehmen wir z.B. 'GEN' falls existiert, sonst Index (nur für Demo)
+if 'GEN' in plz_2er.columns:
+    plz_2er['plz2'] = plz_2er['GEN'].astype(str).str[:2]
+else:
+    # Fallback: jede Geometrie als eigenes Gebiet (Index)
+    plz_2er['plz2'] = plz_2er.index.astype(str)
+
+# -----------------------------
+# 4) Consultant-Zuordnung nach deiner Liste
+# -----------------------------
+plz2_to_consultant = {}
+mapping = {
+    'Dustin': ['77', '78', '79', '88'],
+    'Tobias': ['81', '82', '83', '84'],
+    'Philipp': ['32', '33', '40', '41', '42', '43', '44', '45', '46', '47', '48', '50', '51', '52', '53', '56', '57', '58', '59'],
+    'Vanessa': ['10', '11', '12', '13', '20', '21', '22'],
+    'Patricia': ['68', '69', '71', '74', '75', '76'],
+    'Kathrin': ['80', '85', '86', '87'],
+    'Sebastian': ['01', '02', '03', '04', '05', '06', '07', '08', '09', '14', '15', '16', '17', '18', '19'],
+    'Sumak': ['90', '91', '92', '93', '94', '95', '96', '97'],
+    'Jonathan': ['70', '72', '73', '89']
 }
 
-plz_2er['consultant'] = plz_2er.index.map(plz_mapping)  # Index-basierte Zuordnung
+for consultant, plz_list in mapping.items():
+    for p in plz_list:
+        plz2_to_consultant[p] = consultant
+
+# Consultant der 2er-PLZ zuordnen
+plz_2er['consultant'] = plz_2er['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# 4) Karte plotten
+# 5) Karte plotten
 # -----------------------------
 fig = px.choropleth_mapbox(
     plz_2er,
@@ -63,7 +81,7 @@ fig = px.choropleth_mapbox(
     zoom=5,
     center={"lat": 51.0, "lon": 10.0},
     opacity=0.5,
-    hover_data={'consultant': True}
+    hover_data={'plz2': True, 'consultant': True}
 )
 
 # Bundesländer-Umriss darüber
