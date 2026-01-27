@@ -58,7 +58,7 @@ color_map = {
 }
 
 # -----------------------------
-# 5) Karte plotten (ohne Scroll-Zoom)
+# 5) Karte plotten
 # -----------------------------
 fig = px.choropleth_mapbox(
     plz_gdf,
@@ -74,10 +74,27 @@ fig = px.choropleth_mapbox(
     height=1000
 )
 
+# Hover nur Consultant + PLZ
 fig.update_traces(
     hovertemplate="<b>Consultant:</b> %{customdata[1]}<br><b>PLZ:</b> %{customdata[0]}<extra></extra>",
     marker_line_width=1,
     marker_line_color="black"
+)
+
+# -----------------------------
+# 6) Legende direkt in der Karte
+# -----------------------------
+fig.update_layout(
+    legend=dict(
+        title="Consultant",
+        yanchor="top",
+        y=0.99,
+        xanchor="right",
+        x=0.99,
+        bgcolor="white",
+        bordercolor="black",
+        borderwidth=1
+    )
 )
 
 st.plotly_chart(fig, use_container_width=True)
