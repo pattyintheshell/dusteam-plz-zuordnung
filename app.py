@@ -10,7 +10,7 @@ st.title("🗺️ Dusteam Marktverteilung PLZ")
 # -------------------------------
 # GitHub Release URL für PLZ-GeoJSON
 # -------------------------------
-PLZ_URL = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/releases/download/v1.1-plz2/plz_2er.geojson"
+PLZ_URL = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/releases/download/v1.1-plz2/plz_2er.geojson.geojson"
 
 # -------------------------------
 # PLZ-Zuordnung zu Beratern
@@ -27,7 +27,7 @@ berater_mapping = {
     "Jonathan": ["70","72","73","89"],
 }
 
-# Farben pro Berater (RGB)
+# Farben pro Berater (RGBA)
 farben = {
     "Dustin":[255,0,0,120],
     "Tobias":[0,255,0,120],
@@ -79,7 +79,9 @@ if plz_gdf is not None:
     # -------------------------------
     # PyDeck Polygon Layer
     # -------------------------------
-    plz_gdf["coordinates"] = plz_gdf["geometry"].apply(lambda poly: [list(poly.exterior.coords)] if poly.geom_type=="Polygon" else [list(p.exterior.coords) for p in poly.geoms])
+    plz_gdf["coordinates"] = plz_gdf["geometry"].apply(
+        lambda poly: [list(poly.exterior.coords)] if poly.geom_type=="Polygon" else [list(p.exterior.coords) for p in poly.geoms]
+    )
 
     layer = pdk.Layer(
         "PolygonLayer",
