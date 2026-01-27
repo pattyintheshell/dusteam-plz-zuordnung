@@ -1,6 +1,5 @@
 streamlit
 geopandas
+pandas
 folium
 streamlit-folium
-pandas
-requests
