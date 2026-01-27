@@ -1,6 +1,7 @@
 import streamlit as st
 import geopandas as gpd
 import plotly.express as px
+import plotly.graph_objects as go
 import requests
 from io import BytesIO
 
@@ -28,15 +29,15 @@ plz_gdf['plz2'] = plz_gdf['Index'].astype(str).str.zfill(2)
 # 3) Consultant-Zuordnung
 # -----------------------------
 plz_mapping = {
-    'Dustin': ['77', '78', '79', '88'],
-    'Tobias': ['81', '82', '83', '84'],
-    'Philipp': ['32', '33', '40', '41', '42', '43', '44', '45', '46', '47', '48', '50', '51', '52', '53', '56', '57', '58', '59'],
-    'Vanessa': ['10', '11', '12', '13', '20', '21', '22'],
-    'Patricia': ['68', '69', '71', '74', '75', '76'],
-    'Kathrin': ['80', '85', '86', '87'],
-    'Sebastian': ['01', '02', '03', '04', '05', '06', '07', '08', '09', '14', '15', '16', '17', '18', '19'],
-    'Sumak': ['90', '91', '92', '93', '94', '95', '96', '97'],
-    'Jonathan': ['70', '72', '73', '89']
+    'Dustin': ['77','78','79','88'],
+    'Tobias': ['81','82','83','84'],
+    'Philipp': ['32','33','40','41','42','43','44','45','46','47','48','50','51','52','53','56','57','58','59'],
+    'Vanessa': ['10','11','12','13','20','21','22'],
+    'Patricia': ['68','69','71','74','75','76'],
+    'Kathrin': ['80','85','86','87'],
+    'Sebastian': ['01','02','03','04','05','06','07','08','09','14','15','16','17','18','19'],
+    'Sumak': ['90','91','92','93','94','95','96','97'],
+    'Jonathan': ['70','72','73','89']
 }
 
 plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_list}
@@ -46,21 +47,12 @@ plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassign
 # 4) Farben
 # -----------------------------
 color_map = {
-    'Dustin': '#1f77b4',
-    'Tobias': '#ff7f0e',
-    'Philipp': '#2ca02c',
-    'Vanessa': '#d62728',
-    'Patricia': '#9467bd',
-    'Kathrin': '#8c564b',
-    'Sebastian': '#e377c2',
-    'Sumak': '#17becf',
-    'Jonathan': '#bcbd22',
-    'Unassigned': '#c0c0c0'
+    'Dustin':'#1f77b4','Tobias':'#ff7f0e','Philipp':'#2ca02c','Vanessa':'#d62728',
+    'Patricia':'#9467bd','Kathrin':'#8c564b','Sebastian':'#e377c2','Sumak':'#17becf',
+    'Jonathan':'#bcbd22','Unassigned':'#c0c0c0'
 }
 
-category_orders = {
-    'consultant': ['Dustin', 'Tobias', 'Philipp', 'Vanessa', 'Patricia', 'Kathrin', 'Sebastian', 'Sumak', 'Jonathan', 'Unassigned']
-}
+category_orders = {'consultant':['Dustin','Tobias','Philipp','Vanessa','Patricia','Kathrin','Sebastian','Sumak','Jonathan','Unassigned']}
 
 # -----------------------------
 # 5) Karte plotten
@@ -74,9 +66,9 @@ fig = px.choropleth_mapbox(
     category_orders=category_orders,
     mapbox_style="carto-positron",
     zoom=5,
-    center={"lat": 51.0, "lon": 10.0},
+    center={"lat":51.0,"lon":10.0},
     opacity=0.6,
-    hover_data={'plz2': True, 'consultant': True},
+    hover_data={'plz2':True,'consultant':True},
     height=1000
 )
 
@@ -87,51 +79,40 @@ fig.update_traces(
 )
 
 # -----------------------------
-# 6) Mobile-responsive Legende als Kasten mit Schatten + abgerundeten Ecken
+# 6) Echte schwebende, responsive Legende
 # -----------------------------
-screen_width = st.experimental_get_query_params().get("screen_width", [1024])
-screen_width = int(screen_width)
+# Berechnung der Schriftgröße proportional zur Höhe
+height = 1000
+title_font_size = int(height / 30)
+font_size = int(height / 40)
+padding = int(height / 80)
 
-if screen_width < 600:
-    title_size = 20
-    font_size = 16
-    borderpad = 5
-else:
-    title_size = 32
-    font_size = 28
-    borderpad = 10
+# Legenden-Items in Reihenfolge + "Unassigned" unten
+legend_items = ['Dustin','Tobias','Philipp','Vanessa','Patricia','Kathrin','Sebastian','Sumak','Jonathan','Unassigned']
+
+# Dummy-Traces für schwebende Legende
+for i, c in enumerate(legend_items):
+    fig.add_trace(go.Scattermapbox(
+        lat=[None], lon=[None],  # keine Punkte auf der Karte
+        mode='markers',
+        marker=dict(size=10, color=color_map[c]),
+        name=c
+    ))
 
 fig.update_layout(
     legend=dict(
         title="Consultants",
-        title_font=dict(color="black", size=title_size, family="Arial Black"),
+        title_font=dict(color="black", size=title_font_size, family="Arial Black"),
         font=dict(color="black", size=font_size),
+        bgcolor="white",
+        bordercolor="black",
+        borderwidth=2,
+        borderpad=padding,
+        traceorder="normal",
         yanchor="top",
         y=0.99,
         xanchor="right",
         x=0.99,
-        bgcolor="white",
-        bordercolor="black",
-        borderwidth=2,
-        borderpad=borderpad,
-        traceorder="normal"
-    )
-)
-
-# Optional: Pseudo-Schatten / Overlay-Kasten
-fig.add_annotation(
-    dict(
-        x=1.02,
-        y=1.05,
-        xref="paper",
-        yref="paper",
-        text="",
-        showarrow=False,
-        bgcolor="white",
-        bordercolor="black",
-        borderwidth=2,
-        borderpad=borderpad,
-        opacity=0.7
     )
 )
 
