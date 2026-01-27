@@ -82,11 +82,13 @@ fig.update_traces(
 )
 
 # -----------------------------
-# 6) Legende direkt in der Karte
+# 6) Legende direkt in der Karte (größer)
 # -----------------------------
 fig.update_layout(
     legend=dict(
-        title="Consultant",
+        title="Consultants",
+        title_font=dict(color="black", size=16),
+        font=dict(color="black", size=14),
         yanchor="top",
         y=0.99,
         xanchor="right",
