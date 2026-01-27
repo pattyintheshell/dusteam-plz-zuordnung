@@ -50,19 +50,19 @@ for consultant, plz_list in plz_mapping.items():
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# 4) Farben festlegen
+# 4) Farben festlegen (klarer)
 # -----------------------------
 color_map = {
-    'Dustin': '#1f77b4',
-    'Tobias': '#ff7f0e',
-    'Philipp': '#2ca02c',
-    'Vanessa': '#d62728',
-    'Patricia': '#9467bd',
-    'Kathrin': '#8c564b',
-    'Sebastian': '#e377c2',
-    'Sumak': '#7f7f7f',
-    'Jonathan': '#bcbd22',
-    'Unassigned': '#c0c0c0'  # grau
+    'Dustin': '#1f77b4',    # blau
+    'Tobias': '#ff7f0e',    # orange
+    'Philipp': '#2ca02c',   # grün
+    'Vanessa': '#d62728',   # rot
+    'Patricia': '#9467bd',  # lila
+    'Kathrin': '#8c564b',   # braun
+    'Sebastian': '#e377c2', # pink
+    'Sumak': '#17becf',     # türkis
+    'Jonathan': '#bcbd22',  # oliv
+    'Unassigned': '#c0c0c0' # grau
 }
 
 # -----------------------------
@@ -79,15 +79,20 @@ fig = px.choropleth_mapbox(
     center={"lat": 51.0, "lon": 10.0},
     opacity=0.6,
     hover_data={'plz2': True, 'consultant': True},
-    height=800
+    height=1000  # Karte höher
 )
 
 # Hover nur Consultant + PLZ
 fig.update_traces(
-    hovertemplate="<b>Consultant:</b> %{customdata[1]}<br><b>PLZ 2er:</b> %{customdata[0]}<extra></extra>"
+    hovertemplate="<b>Consultant:</b> %{customdata[1]}<br><b>PLZ:</b> %{customdata[0]}<extra></extra>"
 )
 
 # Umrisse
 fig.update_traces(marker_line_width=1, marker_line_color="black")
+
+# Scroll-Zoom aktivieren
+fig.update_layout(
+    mapbox=dict(scrollZoom=True)
+)
 
 st.plotly_chart(fig, use_container_width=True)
