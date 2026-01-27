@@ -3,8 +3,8 @@ import geopandas as gpd
 import plotly.express as px
 import requests
 from io import BytesIO
+import streamlit.components.v1 as components
 
-# Seite ohne Sidebar, volle Breite
 st.set_page_config(layout="wide")
 st.title("🗺️ Marktaufteilung Dusteam")
 
@@ -22,10 +22,6 @@ plz_gdf = gpd.read_file(BytesIO(r.content))
 # -----------------------------
 # 2) 2er-PLZ erstellen
 # -----------------------------
-if 'plz' not in plz_gdf.columns:
-    st.error("Keine PLZ-Spalte in der GeoJSON gefunden!")
-    st.stop()
-
 plz_gdf['plz2'] = plz_gdf['plz'].astype(str).str[:2]
 
 # -----------------------------
@@ -43,31 +39,27 @@ plz_mapping = {
     'Jonathan': ['70', '72', '73', '89']
 }
 
-plz2_to_consultant = {}
-for consultant, plz_list in plz_mapping.items():
-    for p in plz_list:
-        plz2_to_consultant[p] = consultant
-
+plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_list}
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
 # 4) Farben
 # -----------------------------
 color_map = {
-    'Dustin': '#1f77b4',    # blau
-    'Tobias': '#ff7f0e',    # orange
-    'Philipp': '#2ca02c',   # grün
-    'Vanessa': '#d62728',   # rot
-    'Patricia': '#9467bd',  # lila
-    'Kathrin': '#8c564b',   # braun
-    'Sebastian': '#e377c2', # pink
-    'Sumak': '#17becf',     # türkis
-    'Jonathan': '#bcbd22',  # oliv
-    'Unassigned': '#c0c0c0' # grau
+    'Dustin': '#1f77b4',
+    'Tobias': '#ff7f0e',
+    'Philipp': '#2ca02c',
+    'Vanessa': '#d62728',
+    'Patricia': '#9467bd',
+    'Kathrin': '#8c564b',
+    'Sebastian': '#e377c2',
+    'Sumak': '#17becf',
+    'Jonathan': '#bcbd22',
+    'Unassigned': '#c0c0c0'
 }
 
 # -----------------------------
-# 5) Karte plotten
+# 5) Plotly Karte
 # -----------------------------
 fig = px.choropleth_mapbox(
     plz_gdf,
@@ -80,16 +72,16 @@ fig = px.choropleth_mapbox(
     center={"lat": 51.0, "lon": 10.0},
     opacity=0.6,
     hover_data={'plz2': True, 'consultant': True},
-    height=st.experimental_get_query_params().get('height', [1200])[0]  # extra hoch
+    height=1000
 )
 
-# Hover nur Consultant + PLZ
 fig.update_traces(
-    hovertemplate="<b>Consultant:</b> %{customdata[1]}<br><b>PLZ:</b> %{customdata[0]}<extra></extra>"
+    hovertemplate="<b>Consultant:</b> %{customdata[1]}<br><b>PLZ:</b> %{customdata[0]}<extra></extra>",
+    marker_line_width=1,
+    marker_line_color="black"
 )
 
-# Umrisse
-fig.update_traces(marker_line_width=1, marker_line_color="black")
-
-# Karte in voller Breite
-st.plotly_chart(fig, use_container_width=True)
+# -----------------------------
+# 6) Karte via HTML einbetten für direkten Scroll-Zoom
+# -----------------------------
+components.html(fig.to_html(include_plotlyjs='cdn'), height=1100, scrolling=True)
