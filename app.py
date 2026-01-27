@@ -7,19 +7,26 @@ from io import BytesIO
 st.set_page_config(layout="wide")
 st.title("🗺️ Marktaufteilung Dusteam")
 
-# 1) 2er-PLZ GeoJSON laden
-geojson_url = "https://raw.githubusercontent.com/tdudek/de-plz-geojson/master/plz-2stellig.geojson"
-r = requests.get(geojson_url)
+# -----------------------------
+# 1) PLZ GeoJSON direkt online laden
+# -----------------------------
+PLZ_URL = "https://raw.githubusercontent.com/pattyintheshell/dusteam-plz-zuordnung/main/plz_deutschland.geojson"
+
+r = requests.get(PLZ_URL)
 if r.status_code != 200:
-    st.error(f"Fehler beim Laden der GeoJSON: {r.status_code}")
+    st.error(f"Fehler beim Laden der PLZ GeoJSON: {r.status_code}")
     st.stop()
 
 plz_gdf = gpd.read_file(BytesIO(r.content))
 
-# 2) 2er-PLZ erstellen
-plz_gdf['plz2'] = plz_gdf['plz'].astype(str).str[:2]
+# -----------------------------
+# 2) 2er-PLZ aus 'Index' erstellen
+# -----------------------------
+plz_gdf['plz2'] = plz_gdf['Index'].astype(str).str.zfill(2)
 
+# -----------------------------
 # 3) Consultant-Zuordnung
+# -----------------------------
 plz_mapping = {
     'Dustin': ['77', '78', '79', '88'],
     'Tobias': ['81', '82', '83', '84'],
@@ -35,7 +42,9 @@ plz_mapping = {
 plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_list}
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
+# -----------------------------
 # 4) Farben
+# -----------------------------
 color_map = {
     'Dustin': '#1f77b4',
     'Tobias': '#ff7f0e',
@@ -49,12 +58,13 @@ color_map = {
     'Unassigned': '#c0c0c0'
 }
 
-# Reihenfolge für Legende
 category_orders = {
     'consultant': ['Dustin', 'Tobias', 'Philipp', 'Vanessa', 'Patricia', 'Kathrin', 'Sebastian', 'Sumak', 'Jonathan', 'Unassigned']
 }
 
+# -----------------------------
 # 5) Karte plotten
+# -----------------------------
 fig = px.choropleth_mapbox(
     plz_gdf,
     geojson=plz_gdf.geometry,
@@ -76,19 +86,52 @@ fig.update_traces(
     marker_line_color="black"
 )
 
-# 6) Legende direkt in der Karte
+# -----------------------------
+# 6) Mobile-responsive Legende als Kasten mit Schatten + abgerundeten Ecken
+# -----------------------------
+screen_width = st.experimental_get_query_params().get("screen_width", [1024])
+screen_width = int(screen_width)
+
+if screen_width < 600:
+    title_size = 20
+    font_size = 16
+    borderpad = 5
+else:
+    title_size = 32
+    font_size = 28
+    borderpad = 10
+
 fig.update_layout(
     legend=dict(
         title="Consultants",
-        title_font=dict(color="black", size=32, family="Arial Black"),
-        font=dict(color="black", size=28),
+        title_font=dict(color="black", size=title_size, family="Arial Black"),
+        font=dict(color="black", size=font_size),
         yanchor="top",
         y=0.99,
         xanchor="right",
         x=0.99,
         bgcolor="white",
         bordercolor="black",
-        borderwidth=2
+        borderwidth=2,
+        borderpad=borderpad,
+        traceorder="normal"
+    )
+)
+
+# Optional: Pseudo-Schatten / Overlay-Kasten
+fig.add_annotation(
+    dict(
+        x=1.02,
+        y=1.05,
+        xref="paper",
+        yref="paper",
+        text="",
+        showarrow=False,
+        bgcolor="white",
+        bordercolor="black",
+        borderwidth=2,
+        borderpad=borderpad,
+        opacity=0.7
     )
 )
 
