@@ -46,18 +46,16 @@ color_map = {
     'Jonathan': '#bcbd22','Unassigned': '#c0c0c0'
 }
 
-# -----------------------------
-# 4) Reihenfolge der Legende
-# -----------------------------
+# Reihenfolge der Legende
 categories = ['Dustin','Tobias','Philipp','Vanessa','Patricia','Kathrin',
               'Sebastian','Sumak','Jonathan','Unassigned']
 
 # -----------------------------
-# 5) Karte bauen
+# 4) Karte bauen
 # -----------------------------
 fig = go.Figure()
 
-# Polygon-Traces zeichnen, aber ohne Legende
+# Polygon-Traces (showlegend=False, damit keine Doppel-Legende)
 for _, row in plz_gdf.iterrows():
     geom = row.geometry
     polygons = [geom] if geom.type == "Polygon" else geom.geoms
@@ -70,16 +68,18 @@ for _, row in plz_gdf.iterrows():
             fill='toself',
             fillcolor=color_map[row['consultant']],
             line=dict(color='black', width=1),
-            name=row['consultant'],
             hoverinfo='text',
             text=f"PLZ: {row['plz2']}<br>Consultant: {row['consultant']}",
-            showlegend=False  # ⚠️ Kein doppelter Legenden-Eintrag
+            showlegend=False  # ⚠️ KEINE Legende für Polygon-Traces
         ))
 
-# Dummy-Traces nur für die Legende, exakt 1 Eintrag pro Consultant
+# -----------------------------
+# 5) Dummy-Traces für Legende (genau 1 Eintrag pro Consultant)
+# -----------------------------
 for consultant in categories:
     fig.add_trace(go.Scattermapbox(
-        lon=[None], lat=[None],
+        lon=[None],
+        lat=[None],
         mode='markers',
         marker=dict(size=10, color=color_map[consultant]),
         name=consultant,
