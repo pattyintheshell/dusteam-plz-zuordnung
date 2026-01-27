@@ -8,7 +8,7 @@ st.set_page_config(layout="wide")
 st.title("🗺️ Marktaufteilung Dusteam")
 
 # -----------------------------
-# 1) 2er-PLZ GeoJSON laden direkt von GitHub
+# 1) 2er-PLZ GeoJSON laden
 # -----------------------------
 geojson_url = "https://raw.githubusercontent.com/tdudek/de-plz-geojson/master/plz-2stellig.geojson"
 r = requests.get(geojson_url)
@@ -19,9 +19,8 @@ if r.status_code != 200:
 plz_gdf = gpd.read_file(BytesIO(r.content))
 
 # -----------------------------
-# 2) 2er-PLZ aus der GeoJSON-Spalte erstellen
+# 2) 2er-PLZ erstellen
 # -----------------------------
-# Hier nehmen wir die Spalte 'plz', die die tatsächliche PLZ enthält
 if 'plz' not in plz_gdf.columns:
     st.error("Keine PLZ-Spalte in der GeoJSON gefunden!")
     st.stop()
@@ -29,7 +28,7 @@ if 'plz' not in plz_gdf.columns:
 plz_gdf['plz2'] = plz_gdf['plz'].astype(str).str[:2]
 
 # -----------------------------
-# 3) Consultant-Zuordnung (nur aus deiner Liste)
+# 3) Consultant-Zuordnung
 # -----------------------------
 plz_mapping = {
     'Dustin': ['77', '78', '79', '88'],
@@ -43,32 +42,52 @@ plz_mapping = {
     'Jonathan': ['70', '72', '73', '89']
 }
 
-# Mapping erstellen
 plz2_to_consultant = {}
 for consultant, plz_list in plz_mapping.items():
     for p in plz_list:
         plz2_to_consultant[p] = consultant
 
-# Consultant-Spalte erstellen: nur PLZ aus der Liste → sonst Unassigned
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# 4) Karte plotten
+# 4) Farben festlegen
+# -----------------------------
+color_map = {
+    'Dustin': '#1f77b4',
+    'Tobias': '#ff7f0e',
+    'Philipp': '#2ca02c',
+    'Vanessa': '#d62728',
+    'Patricia': '#9467bd',
+    'Kathrin': '#8c564b',
+    'Sebastian': '#e377c2',
+    'Sumak': '#7f7f7f',
+    'Jonathan': '#bcbd22',
+    'Unassigned': '#c0c0c0'  # grau
+}
+
+# -----------------------------
+# 5) Karte plotten
 # -----------------------------
 fig = px.choropleth_mapbox(
     plz_gdf,
     geojson=plz_gdf.geometry,
-    locations=plz_gdf.index,  # Index für die Polygonzuordnung
+    locations=plz_gdf.index,
     color='consultant',
+    color_discrete_map=color_map,
     mapbox_style="carto-positron",
     zoom=5,
     center={"lat": 51.0, "lon": 10.0},
-    opacity=0.5,
+    opacity=0.6,
     hover_data={'plz2': True, 'consultant': True},
     height=800
 )
 
-# Umrisse hinzufügen
+# Hover nur Consultant + PLZ
+fig.update_traces(
+    hovertemplate="<b>Consultant:</b> %{customdata[1]}<br><b>PLZ 2er:</b> %{customdata[0]}<extra></extra>"
+)
+
+# Umrisse
 fig.update_traces(marker_line_width=1, marker_line_color="black")
 
 st.plotly_chart(fig, use_container_width=True)
