@@ -1,6 +1,6 @@
 import streamlit as st
 import geopandas as gpd
-import plotly.graph_objects as go
+import plotly.express as px
 import pandas as pd
 import requests
 from io import BytesIO
@@ -48,50 +48,39 @@ color_map = {
 }
 
 # -----------------------------
-# 4) Alle Farben als Liste für die Trace vorbereiten
+# 4) Consultant als Categorical, Reihenfolge festlegen
 # -----------------------------
-plz_gdf['color'] = plz_gdf['consultant'].map(color_map)
+categories = ['Dustin','Tobias','Philipp','Vanessa','Patricia','Kathrin',
+              'Sebastian','Sumak','Jonathan','Unassigned']
+plz_gdf['consultant'] = pd.Categorical(plz_gdf['consultant'], categories=categories, ordered=True)
 
 # -----------------------------
-# 5) Karte plotten – nur EINE Trace
+# 5) Karte mit px.choropleth_mapbox
 # -----------------------------
-fig = go.Figure()
+fig = px.choropleth_mapbox(
+    plz_gdf,
+    geojson=plz_gdf.geometry,
+    locations=plz_gdf.index,
+    color='consultant',
+    color_discrete_map=color_map,
+    mapbox_style="carto-positron",
+    zoom=5,
+    center={"lat":51.0,"lon":10.0},
+    opacity=0.6,
+    hover_data={'plz2': True, 'consultant': True},
+    height=1000
+)
 
-for i, row in plz_gdf.iterrows():
-    fig.add_trace(go.Scattermapbox(
-        lon=[pt[0] for pt in row.geometry.exterior.coords],
-        lat=[pt[1] for pt in row.geometry.exterior.coords],
-        mode='lines',
-        fill='toself',
-        fillcolor=row['color'],
-        line=dict(color='black', width=1),
-        name=row['consultant'],
-        hoverinfo='text',
-        text=f"PLZ: {row['plz2']}<br>Consultant: {row['consultant']}"
-    ))
-
-# -----------------------------
-# 6) Legende sauber: jeder Consultant einmal
-# -----------------------------
-legend_items = []
-for consultant, color in color_map.items():
-    legend_items.append(go.Scattermapbox(
-        lon=[None], lat=[None],
-        mode='markers',
-        marker=dict(size=10, color=color),
-        name=consultant,
-        showlegend=True
-    ))
-fig.add_traces(legend_items)
+fig.update_traces(
+    hovertemplate="<b>Consultant:</b> %{customdata[1]}<br><b>PLZ:</b> %{customdata[0]}<extra></extra>",
+    marker_line_width=1,
+    marker_line_color="black"
+)
 
 # -----------------------------
-# 7) Layout
+# 6) Legende: sauber, mobil-skalierbar, weiß + leicht transparent
 # -----------------------------
 fig.update_layout(
-    mapbox_style="carto-positron",
-    mapbox_zoom=5,
-    mapbox_center={"lat":51.0,"lon":10.0},
-    height=1000,
     legend=dict(
         title="Consultants",
         title_font=dict(color="black", size=20, family="Arial Black"),
