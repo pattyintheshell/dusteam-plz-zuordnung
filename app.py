@@ -49,6 +49,11 @@ color_map = {
     'Unassigned': '#c0c0c0'
 }
 
+# Reihenfolge für Legende
+category_orders = {
+    'consultant': ['Dustin', 'Tobias', 'Philipp', 'Vanessa', 'Patricia', 'Kathrin', 'Sebastian', 'Sumak', 'Jonathan', 'Unassigned']
+}
+
 # 5) Karte plotten
 fig = px.choropleth_mapbox(
     plz_gdf,
@@ -56,6 +61,7 @@ fig = px.choropleth_mapbox(
     locations=plz_gdf.index,
     color='consultant',
     color_discrete_map=color_map,
+    category_orders=category_orders,
     mapbox_style="carto-positron",
     zoom=5,
     center={"lat": 51.0, "lon": 10.0},
@@ -70,12 +76,12 @@ fig.update_traces(
     marker_line_color="black"
 )
 
-# 6) Legende direkt in der Karte (groß)
+# 6) Legende direkt in der Karte
 fig.update_layout(
     legend=dict(
         title="Consultants",
-        title_font=dict(color="black", size=48),
-        font=dict(color="black", size=42),
+        title_font=dict(color="black", size=32, family="Arial Black"),
+        font=dict(color="black", size=28),
         yanchor="top",
         y=0.99,
         xanchor="right",
