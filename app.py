@@ -47,7 +47,7 @@ color_map = {
 }
 
 # -----------------------------
-# 4) Legende-Reihenfolge
+# 4) Reihenfolge der Legende
 # -----------------------------
 categories = ['Dustin','Tobias','Philipp','Vanessa','Patricia','Kathrin',
               'Sebastian','Sumak','Jonathan','Unassigned']
@@ -57,27 +57,23 @@ categories = ['Dustin','Tobias','Philipp','Vanessa','Patricia','Kathrin',
 # -----------------------------
 fig = go.Figure()
 
-for consultant in categories:
-    subset = plz_gdf[plz_gdf['consultant']==consultant]
-    for _, row in subset.iterrows():
-        if row.geometry.type == "Polygon":
-            coords = row.geometry.exterior.coords
-        else:  # MultiPolygon
-            coords = []
-            for poly in row.geometry.geoms:
-                coords += list(poly.exterior.coords)
-        lons, lats = zip(*coords)
+# Polygon-Traces zeichnen, aber ohne Legende
+for _, row in plz_gdf.iterrows():
+    geom = row.geometry
+    polygons = [geom] if geom.type == "Polygon" else geom.geoms
+    for poly in polygons:
+        lons, lats = zip(*poly.exterior.coords)
         fig.add_trace(go.Scattermapbox(
             lon=lons,
             lat=lats,
             mode='lines',
             fill='toself',
-            fillcolor=color_map[consultant],
+            fillcolor=color_map[row['consultant']],
             line=dict(color='black', width=1),
-            name=consultant,
+            name=row['consultant'],
             hoverinfo='text',
-            text=f"PLZ: {row['plz2']}<br>Consultant: {consultant}",
-            showlegend=False if consultant=="Unassigned" else True
+            text=f"PLZ: {row['plz2']}<br>Consultant: {row['consultant']}",
+            showlegend=False  # ⚠️ Kein doppelter Legenden-Eintrag
         ))
 
 # Dummy-Traces nur für die Legende, exakt 1 Eintrag pro Consultant
