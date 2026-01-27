@@ -2,6 +2,6 @@ streamlit
 geopandas
 folium
 streamlit-folium
-shapely
-pyproj
-fiona
+pandas
+requests
+pyogrio
