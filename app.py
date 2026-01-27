@@ -2,7 +2,7 @@ import streamlit as st
 import geopandas as gpd
 import plotly.express as px
 import requests
-from io import BytesIO
+import json
 
 st.set_page_config(layout="wide")
 st.title("🗺️ Marktaufteilung Dusteam")
@@ -11,15 +11,17 @@ st.title("🗺️ Marktaufteilung Dusteam")
 # 1. Bundesländer laden
 # -----------------------------
 bundeslaender_url = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/releases/download/v1.0-bundeslaender/bundeslaender_deutschland.txt"
-bundeslaender_bytes = BytesIO(requests.get(bundeslaender_url).content)
-bundeslaender = gpd.read_file(bundeslaender_bytes)
+r = requests.get(bundeslaender_url)
+data = json.loads(r.content)
+bundeslaender = gpd.GeoDataFrame.from_features(data["features"])
 
 # -----------------------------
 # 2. Große PLZ-Datei laden
 # -----------------------------
 plz_url = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/releases/download/v1.0-plz/plz_deutschland.txt"
-plz_bytes = BytesIO(requests.get(plz_url).content)
-plz = gpd.read_file(plz_bytes)
+r = requests.get(plz_url)
+data = json.loads(r.content)
+plz = gpd.GeoDataFrame.from_features(data["features"])
 
 # -----------------------------
 # 3. Automatisch 2er PLZ erstellen
@@ -27,13 +29,13 @@ plz = gpd.read_file(plz_bytes)
 # Prüfen, welche Spalte wie PLZ aussieht
 plz_column = None
 for col in plz.columns:
-    sample = plz[col].dropna().astype(str).iloc[0]
+    sample = str(plz[col].dropna().iloc[0])
     if sample.isdigit() and len(sample) == 5:
         plz_column = col
         break
 
 if plz_column is None:
-    st.error("Keine gültige PLZ-Spalte gefunden! Bitte prüfen.")
+    st.error("Keine gültige 5-stellige PLZ-Spalte gefunden!")
     st.stop()
 
 # 2er PLZ extrahieren
