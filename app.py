@@ -88,11 +88,13 @@ fig.update_traces(
 )
 
 # -----------------------------
-# 6) Schwebende, responsive Legende (kompatibel)
+# 6) Dynamische, mobile-responsive Legende
 # -----------------------------
-height = 1000
-title_font_size = max(18, int(height / 30))
-font_size = max(14, int(height / 40))
+# Streamlit gibt keine exakte Displaygröße, aber wir können approx. per Layout width / scaling
+screen_width = st.sidebar.slider("Screen width approximation", 300, 2000, 800)  # Optional, für Test
+title_font_size = max(14, min(24, screen_width // 40))
+font_size = max(10, min(18, screen_width // 60))
+padding = max(3, min(10, screen_width // 100))
 
 legend_items = [
     'Dustin','Tobias','Philipp','Vanessa','Patricia',
@@ -108,15 +110,17 @@ for c in legend_items:
         name=c
     ))
 
-# Layout ohne inkompatible Parameter
 fig.update_layout(
     legend=dict(
         title="Consultants",
         title_font=dict(color="black", size=title_font_size, family="Arial Black"),
         font=dict(color="black", size=font_size),
+        bgcolor="rgba(255,255,255,0.9)",  # Weiß + leicht transparent
         traceorder="normal",
-        yanchor="top", y=0.99,
-        xanchor="right", x=0.99
+        yanchor="top",
+        y=0.99,
+        xanchor="right",
+        x=0.99
     )
 )
 
