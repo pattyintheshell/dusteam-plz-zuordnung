@@ -62,4 +62,31 @@ st.success("Daten erfolgreich geladen ✅")
 st.write("**Bundesländer:**", len(bundeslaender_gdf))
 st.write("**PLZ-Flächen:**", len(plz_gdf))
 
-st.map(plz_gdf)
+import pydeck as pdk
+
+geojson_data = plz_gdf.__geo_interface__
+
+layer = pdk.Layer(
+    "GeoJsonLayer",
+    geojson_data,
+    pickable=True,
+    stroked=True,
+    filled=True,
+    get_fill_color="[200, 30, 0, 80]",
+    get_line_color="[0, 0, 0, 200]",
+    line_width_min_pixels=0.5,
+)
+
+view_state = pdk.ViewState(
+    latitude=51.0,
+    longitude=10.0,
+    zoom=5,
+)
+
+st.pydeck_chart(
+    pdk.Deck(
+        layers=[layer],
+        initial_view_state=view_state,
+        tooltip={"text": "PLZ: {plz}"},
+    )
+)
