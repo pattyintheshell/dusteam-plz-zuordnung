@@ -3,6 +3,7 @@ import geopandas as gpd
 import plotly.express as px
 import requests
 import json
+from io import BytesIO
 
 st.set_page_config(layout="wide")
 st.title("🗺️ Marktaufteilung Dusteam")
@@ -10,16 +11,18 @@ st.title("🗺️ Marktaufteilung Dusteam")
 # -----------------------------
 # 1. Bundesländer laden
 # -----------------------------
-bundeslaender_url = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/releases/download/v1.0-bundeslaender/bundeslaender_deutschland.txt"
+bundeslaender_url = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/raw/v1.0-bundeslaender/bundeslaender_deutschland.txt"
 r = requests.get(bundeslaender_url)
+r.raise_for_status()
 data = json.loads(r.content)
 bundeslaender = gpd.GeoDataFrame.from_features(data["features"])
 
 # -----------------------------
 # 2. Große PLZ-Datei laden
 # -----------------------------
-plz_url = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/releases/download/v1.0-plz/plz_deutschland.txt"
+plz_url = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/raw/v1.0-plz/plz_deutschland.txt"
 r = requests.get(plz_url)
+r.raise_for_status()
 data = json.loads(r.content)
 plz = gpd.GeoDataFrame.from_features(data["features"])
 
