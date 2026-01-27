@@ -18,11 +18,11 @@ BUNDESLAENDER_RELEASE_TAG = "v1.0-bundeslaender"
 PLZ_RELEASE_TAG = "v1.0-plz"
 
 # -----------------------------
-# 2️⃣ Funktion: GeoJSON aus GitHub Release laden
+# 2️⃣ GeoJSON aus Release laden (öffentlich)
 # -----------------------------
 def get_release_assets_urls(user, repo, tag):
     api_url = f"https://api.github.com/repos/{user}/{repo}/releases/tags/{tag}"
-    headers = {"User-Agent": "Streamlit-App"}  # wichtig für GitHub
+    headers = {"User-Agent": "Streamlit-App"}  # wichtig, sonst blockiert GitHub
     r = requests.get(api_url, headers=headers)
     r.raise_for_status()
     release_data = r.json()
@@ -34,12 +34,9 @@ def read_geojson_from_github(url):
     r.raise_for_status()
     return gpd.read_file(io.BytesIO(r.content))
 
-# -----------------------------
-# 3️⃣ Daten laden
-# -----------------------------
 # Bundesländer
 bundeslaender_urls = get_release_assets_urls(GITHUB_USER, REPO, BUNDESLAENDER_RELEASE_TAG)
-bundeslaender_gdf = read_geojson_from_github(bundeslaender_urls[0])  # nur eine Datei
+bundeslaender_gdf = read_geojson_from_github(bundeslaender_urls[0])
 
 # PLZ-Dateien
 plz_urls = get_release_assets_urls(GITHUB_USER, REPO, PLZ_RELEASE_TAG)
@@ -47,7 +44,7 @@ plz_gdfs = [read_geojson_from_github(url) for url in plz_urls]
 plz_gdf = gpd.GeoDataFrame(pd.concat(plz_gdfs, ignore_index=True), crs="EPSG:4326")
 
 # -----------------------------
-# 4️⃣ Consultants & Farben
+# 3️⃣ Consultants & Farben
 # -----------------------------
 CONSULTANTS = {
     "Dustin": ["77", "78", "79", "88"],
@@ -82,7 +79,7 @@ def assign_consultant(plz2):
 plz_gdf['consultant'] = plz_gdf['plz2'].apply(assign_consultant)
 
 # -----------------------------
-# 5️⃣ Karte erstellen
+# 4️⃣ Karte erstellen
 # -----------------------------
 m = folium.Map(location=[51.2, 10.4], zoom_start=6, tiles="cartodbpositron")
 
@@ -100,7 +97,7 @@ for _, row in plz_gdf.iterrows():
     ).add_to(m)
 
 # -----------------------------
-# 6️⃣ Legende
+# 5️⃣ Legende
 # -----------------------------
 legend_html = "<div style='position: fixed; bottom: 50px; left: 50px; background: white; padding: 10px; border:1px solid black;'>"
 legend_html += "<b>Consultants</b><br>"
