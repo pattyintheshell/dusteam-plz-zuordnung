@@ -2,48 +2,62 @@ import streamlit as st
 import geopandas as gpd
 import pydeck as pdk
 
-st.set_page_config(page_title="🗺️ Dusteam Marktverteilung PLZ", layout="wide")
+# -------------------------------
+# Titel der App
+# -------------------------------
 st.title("🗺️ Dusteam Marktverteilung PLZ")
 
-# --------------------------
-# Pfad zur neuen PLZ-2er Datei
-# --------------------------
-PLZ_2ER_FILE = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/releases/download/v1.0-plz/plz_2er.geojson"
+# -------------------------------
+# GeoJSON-Datei laden
+# -------------------------------
+PLZ_FILE = "plz_2er.geojson"
 
-# --------------------------
-# Lade Daten
-# --------------------------
 @st.cache_data
-def load_plz_2er():
-    gdf = gpd.read_file(PLZ_2ER_FILE)
-    gdf["polygon_coords"] = gdf["geometry"].apply(lambda geom: [list(p.exterior.coords) for p in geom.geoms] 
-                                                  if geom.geom_type=="MultiPolygon" else [list(geom.exterior.coords)])
-    return gdf
+def load_geojson(file_path):
+    try:
+        gdf = gpd.read_file(file_path)
+        return gdf
+    except Exception as e:
+        st.error(f"Fehler beim Laden der Datei: {e}")
+        return None
 
-with st.spinner("Lade PLZ-2er Daten…"):
-    plz_gdf = load_plz_2er()
+plz_gdf = load_geojson(PLZ_FILE)
 
-st.success(f"PLZ-2er Gebiete geladen: {len(plz_gdf)}")
+if plz_gdf is not None:
+    st.success(f"Daten erfolgreich geladen ✅\nPLZ-2er Gebiete: {len(plz_gdf)}")
 
-# --------------------------
-# PyDeck Karte
-# --------------------------
-plz_layer = pdk.Layer(
-    "PolygonLayer",
-    plz_gdf,
-    get_polygon="polygon_coords",
-    get_fill_color="color",
-    get_line_color=[0,0,0,50],
-    pickable=True,
-    auto_highlight=True
-)
+    # -------------------------------
+    # PyDeck-Karte
+    # -------------------------------
+    # Wir nutzen die Centroid-Koordinaten der Flächen für die Deck-Visualisierung
+    plz_gdf["centroid_lon"] = plz_gdf.geometry.centroid.x
+    plz_gdf["centroid_lat"] = plz_gdf.geometry.centroid.y
 
-view_state = pdk.ViewState(latitude=51.0, longitude=10.0, zoom=5)
-
-st.pydeck_chart(
-    pdk.Deck(
-        layers=[plz_layer],
-        initial_view_state=view_state,
-        tooltip={"text": "PLZ-2er: {PLZ2}\nConsultant: {Consultant}"}
+    # PyDeck Layer
+    layer = pdk.Layer(
+        "PolygonLayer",
+        plz_gdf,
+        pickable=True,
+        stroked=True,
+        filled=True,
+        get_polygon="coordinates",
+        get_fill_color=[200, 30, 0, 100],
+        get_line_color=[0, 0, 0, 200],
+        auto_highlight=True,
     )
-)
+
+    # Deck-Objekt
+    view_state = pdk.ViewState(
+        longitude=10.5,  # ungefähr Mitte Deutschland
+        latitude=51.2,
+        zoom=5,
+        min_zoom=4,
+        max_zoom=10,
+        pitch=0,
+    )
+
+    r = pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip={"text": "{PLZ}"})
+
+    st.pydeck_chart(r)
+else:
+    st.error("Keine Daten zum Anzeigen.")
