@@ -55,7 +55,7 @@ def load_data():
     plz_gdfs = []
     for url in PLZ_URLS:
         gdf = gpd.read_file(url)
-        # Spalte für PLZ sicherstellen
+        # PLZ-Spalte sichern
         plz_col = None
         for col in gdf.columns:
             if col.lower() in ["plz", "postcode", "postal_code", "zip"]:
@@ -84,11 +84,12 @@ st.write(f"**PLZ-Flächen:** {len(plz_gdf)}")
 # =========================
 plz_points = plz_gdf.copy()
 plz_points["geometry"] = plz_points["geometry"].centroid
+plz_points["coords"] = plz_points["geometry"].apply(lambda g: [g.x, g.y])
 
 layer = pdk.Layer(
     "ScatterplotLayer",
     plz_points,
-    get_position="[geometry.x, geometry.y]",
+    get_position="coords",
     get_fill_color="[200, 30, 0, 180]",
     get_line_color="[0, 0, 0, 200]",
     get_radius=3000,
