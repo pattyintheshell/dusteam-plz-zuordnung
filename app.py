@@ -3,31 +3,40 @@ import geopandas as gpd
 import plotly.express as px
 import requests
 import json
-from io import BytesIO
 
 st.set_page_config(layout="wide")
 st.title("🗺️ Marktaufteilung Dusteam")
 
 # -----------------------------
-# 1. Bundesländer laden
+# 1. Hilfsfunktion zum Laden von GeoJSON aus Release Assets
 # -----------------------------
-bundeslaender_url = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/raw/v1.0-bundeslaender/bundeslaender_deutschland.txt"
-r = requests.get(bundeslaender_url)
-r.raise_for_status()
-data = json.loads(r.content)
-bundeslaender = gpd.GeoDataFrame.from_features(data["features"])
+def load_geojson_from_release(url):
+    r = requests.get(url)
+    if r.status_code != 200:
+        st.error(f"Fehler beim Download der Datei: {url}\nHTTP Status: {r.status_code}")
+        st.stop()
+    try:
+        data = json.loads(r.content)
+        gdf = gpd.GeoDataFrame.from_features(data["features"])
+        return gdf
+    except Exception as e:
+        st.error(f"Fehler beim Parsen der GeoJSON: {e}")
+        st.stop()
 
 # -----------------------------
-# 2. Große PLZ-Datei laden
+# 2. Bundesländer laden
 # -----------------------------
-plz_url = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/raw/v1.0-plz/plz_deutschland.txt"
-r = requests.get(plz_url)
-r.raise_for_status()
-data = json.loads(r.content)
-plz = gpd.GeoDataFrame.from_features(data["features"])
+bundeslaender_url = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/releases/download/v1.0-bundeslaender/bundeslaender_deutschland.txt"
+bundeslaender = load_geojson_from_release(bundeslaender_url)
 
 # -----------------------------
-# 3. Automatisch 2er PLZ erstellen
+# 3. Große PLZ-Datei laden
+# -----------------------------
+plz_url = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/releases/download/v1.0-plz/plz_deutschland.txt"
+plz = load_geojson_from_release(plz_url)
+
+# -----------------------------
+# 4. Automatisch 2er PLZ erstellen
 # -----------------------------
 # Prüfen, welche Spalte wie PLZ aussieht
 plz_column = None
@@ -48,7 +57,7 @@ plz['plz2'] = plz[plz_column].astype(str).str[:2]
 plz_2er = plz.dissolve(by='plz2').reset_index()
 
 # -----------------------------
-# 4. Consultant-Zuordnung
+# 5. Consultant-Zuordnung
 # -----------------------------
 plz_mapping = {
     '68': 'Anna',
@@ -61,7 +70,7 @@ plz_mapping = {
 plz_2er['consultant'] = plz_2er['plz2'].map(plz_mapping)
 
 # -----------------------------
-# 5. Karte plotten
+# 6. Karte plotten
 # -----------------------------
 fig = px.choropleth_mapbox(
     plz_2er,
