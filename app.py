@@ -48,27 +48,45 @@ color_map = {
 }
 
 # -----------------------------
-# 4) Karte vorbereiten
+# 4) Alle Farben als Liste für die Trace vorbereiten
+# -----------------------------
+plz_gdf['color'] = plz_gdf['consultant'].map(color_map)
+
+# -----------------------------
+# 5) Karte plotten – nur EINE Trace
 # -----------------------------
 fig = go.Figure()
 
-for consultant, color in color_map.items():
-    subset = plz_gdf[plz_gdf['consultant'] == consultant]
-    fig.add_trace(
-        go.Choroplethmapbox(
-            geojson=subset.geometry.__geo_interface__,
-            locations=subset.index,
-            z=[1]*len(subset),
-            showscale=False,
-            marker_opacity=0.6,
-            marker_line_width=1,
-            marker_line_color="black",
-            name=consultant,
-            hovertemplate="<b>Consultant:</b> %{customdata[1]}<br><b>PLZ:</b> %{customdata[0]}<extra></extra>",
-            customdata=subset[['plz2','consultant']].values
-        )
-    )
+for i, row in plz_gdf.iterrows():
+    fig.add_trace(go.Scattermapbox(
+        lon=[pt[0] for pt in row.geometry.exterior.coords],
+        lat=[pt[1] for pt in row.geometry.exterior.coords],
+        mode='lines',
+        fill='toself',
+        fillcolor=row['color'],
+        line=dict(color='black', width=1),
+        name=row['consultant'],
+        hoverinfo='text',
+        text=f"PLZ: {row['plz2']}<br>Consultant: {row['consultant']}"
+    ))
 
+# -----------------------------
+# 6) Legende sauber: jeder Consultant einmal
+# -----------------------------
+legend_items = []
+for consultant, color in color_map.items():
+    legend_items.append(go.Scattermapbox(
+        lon=[None], lat=[None],
+        mode='markers',
+        marker=dict(size=10, color=color),
+        name=consultant,
+        showlegend=True
+    ))
+fig.add_traces(legend_items)
+
+# -----------------------------
+# 7) Layout
+# -----------------------------
 fig.update_layout(
     mapbox_style="carto-positron",
     mapbox_zoom=5,
