@@ -1,51 +1,88 @@
 import streamlit as st
-import geopandas as gpd
 import folium
 from streamlit_folium import st_folium
 
 st.set_page_config(layout="wide")
-st.title("🗺️ Vertriebsregionen Deutschland")
+st.title("🗺️ Vertriebsregionen Deutschland (vereinfacht)")
 
-# Daten laden
-plz_gdf = gpd.read_file("plz-2stellig.geojson")
-bundeslaender = gpd.read_file("bundeslaender.geojson")
+# Consultant + PLZ-Zuweisung
+CONSULTANTS = {
+    "Dustin": ["77", "78", "79", "88"],
+    "Tobias": ["81", "82", "83", "84"],
+    "Philipp": ["32", "33", "40", "41", "42", "43", "44", "45", "46", "47", "48", "50", "51", "52", "53", "56", "57", "58", "59"],
+    "Vanessa": ["10", "11", "12", "13", "20", "21", "22"],
+    "Patricia": ["68", "69", "71", "74", "75", "76"],
+    "Kathrin": ["80", "85", "86", "87"],
+    "Sebastian": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "14", "15", "16", "17", "18", "19"],
+    "Sumak": ["90", "91", "92", "93", "94", "95", "96", "97"],
+    "Jonathan": ["70", "72", "73", "89"]
+}
 
-# Consultant zuordnen
-plz_gdf["consultant"] = plz_gdf["plz"].apply(get_consultant)
-plz_gdf["color"] = plz_gdf["consultant"].map(COLORS)
+COLORS = {
+    "Dustin": "#1f77b4",
+    "Tobias": "#ff7f0e",
+    "Philipp": "#2ca02c",
+    "Vanessa": "#d62728",
+    "Patricia": "#9467bd",
+    "Kathrin": "#8c564b",
+    "Sebastian": "#e377c2",
+    "Sumak": "#7f7f7f",
+    "Jonathan": "#bcbd22"
+}
 
-# Karte
-m = folium.Map(location=[51.1, 10.4], zoom_start=6, tiles="cartodbpositron")
+# Vereinfachte PLZ-Flächen (Rechtecke: [min_lat, min_lon, max_lat, max_lon])
+PLZ_AREAS = {
+    "01":[53.0, 5.5, 54.0, 7.0],"02":[51.5, 6.0, 53.0, 7.5],"03":[51.0, 12.0, 52.0, 14.0],
+    "04":[51.0, 12.5, 51.5, 13.5],"05":[50.5, 6.5, 51.0, 7.5],"06":[50.5, 11.5, 51.0, 12.5],
+    "07":[50.5, 11.5, 51.0, 12.5],"08":[50.0, 12.0, 50.5, 13.0],"09":[50.5, 11.0, 51.0, 11.5],
+    "10":[52.3, 13.0, 53.0, 14.0],"11":[52.0, 13.0, 52.5, 14.0],"12":[51.5, 13.0, 52.0, 14.0],
+    "13":[52.5, 12.5, 53.0, 13.5],"14":[50.8, 11.0, 51.3, 11.5],"15":[51.5, 12.0, 52.0, 12.5],
+    "16":[50.5, 11.5, 51.0, 12.0],"17":[50.0, 11.0, 50.5, 11.5],"18":[50.0, 11.0, 50.5, 11.5],
+    "19":[50.5, 12.0, 51.0, 12.5],"20":[53.5, 9.5, 54.0, 10.5],"21":[53.0, 9.5, 53.5, 10.0],
+    "22":[53.0, 9.0, 53.5, 9.5],"30":[52.0, 8.0, 52.5, 9.0],"32":[51.5, 8.5, 52.0, 9.0],
+    "33":[51.0, 8.0, 51.5, 8.5],"40":[51.3, 6.7, 51.7, 7.0],"41":[51.2, 6.8, 51.6, 7.1],
+    "42":[51.1, 7.0, 51.5, 7.3],"43":[51.0, 7.0, 51.4, 7.3],"44":[51.0, 7.0, 51.5, 7.5],
+    "45":[51.0, 6.9, 51.4, 7.2],"46":[51.0, 6.8, 51.3, 7.1],"47":[51.0, 6.8, 51.3, 7.0],
+    "48":[51.6, 7.3, 51.9, 7.6],"50":[50.7, 6.7, 51.0, 7.2],"51":[50.6, 6.7, 50.9, 7.1],
+    "52":[51.0, 6.8, 51.3, 7.2],"53":[50.9, 6.8, 51.2, 7.1],"56":[50.3, 7.7, 50.6, 8.0],
+    "57":[50.5, 7.5, 50.8, 7.8],"58":[51.0, 7.0, 51.3, 7.3],"59":[51.0, 6.5, 51.3, 6.8],
+    "68":[49.0, 7.5, 49.5, 8.0],"69":[49.5, 8.0, 50.0, 8.5],"70":[48.5, 9.0, 49.0, 9.5],
+    "71":[48.5, 9.5, 49.0, 10.0],"72":[48.5, 9.5, 49.0, 10.0],"73":[48.5, 9.0, 49.0, 9.5],
+    "74":[48.5, 9.0, 49.0, 9.5],"75":[48.5, 9.0, 49.0, 9.5],"76":[48.5, 7.5, 48.9, 8.0],
+    "77":[48.0, 8.5, 48.5, 9.0],"78":[48.0, 8.5, 48.5, 9.0],"79":[48.0, 8.0, 48.5, 8.5],
+    "80":[48.0, 11.0, 48.5, 11.5],"81":[48.5, 10.0, 49.0, 10.5],"82":[48.5, 10.5, 49.0, 11.0],
+    "83":[48.5, 11.0, 49.0, 11.5],"84":[48.5, 11.5, 49.0, 12.0],"85":[48.0, 11.0, 48.5, 11.5],
+    "86":[48.0, 11.5, 48.5, 12.0],"87":[48.0, 12.0, 48.5, 12.5],"88":[47.8, 9.0, 48.3, 9.5],
+    "89":[48.0, 11.5, 48.5, 12.0],"90":[49.0, 10.5, 49.5, 11.0],"91":[49.0, 11.0, 49.5, 11.5],
+    "92":[49.0, 11.5, 49.5, 12.0],"93":[49.0, 12.0, 49.5, 12.5],"94":[49.5, 12.0, 50.0, 12.5],
+    "95":[49.5, 11.5, 50.0, 12.0],"96":[48.5, 10.5, 49.0, 11.0],"97":[48.5, 10.0, 49.0, 10.5]
+}
 
-# PLZ Flächen
-folium.GeoJson(
-    plz_gdf,
-    style_function=lambda x: {
-        "fillColor": x["properties"]["color"],
-        "color": "black",
-        "weight": 0.3,
-        "fillOpacity": 0.6,
-    },
-    tooltip=folium.GeoJsonTooltip(fields=["plz", "consultant"])
-).add_to(m)
+# Karte erstellen
+m = folium.Map(location=[51.2, 10.4], zoom_start=6, tiles="cartodbpositron")
 
-# Bundesländer-Grenzen
-folium.GeoJson(
-    bundeslaender,
-    style_function=lambda x: {
-        "fillOpacity": 0,
-        "color": "black",
-        "weight": 1.2
-    }
-).add_to(m)
+# PLZ-Flächen hinzufügen
+for plz, coords in PLZ_AREAS.items():
+    consultant = next((c for c, z in CONSULTANTS.items() if plz in z), "Unassigned")
+    color = COLORS.get(consultant, "#cccccc")
+    
+    folium.Rectangle(
+        bounds=[[coords[0], coords[1]], [coords[2], coords[3]]],
+        color="black",
+        weight=1,
+        fill=True,
+        fill_color=color,
+        fill_opacity=0.6,
+        tooltip=f"PLZ {plz} – {consultant}"
+    ).add_to(m)
 
 # Legende
 legend_html = "<div style='position: fixed; bottom: 50px; left: 50px; background: white; padding: 10px; border:1px solid black;'>"
 legend_html += "<b>Consultants</b><br>"
 for name, color in COLORS.items():
-    legend_html += f"<i style='background:{color};width:12px;height:12px;display:inline-block;'></i> {name}<br>"
+    legend_html += f"<i style='background:{color};width:12px;height:12px;display:inline-block;margin-right:5px;'></i>{name}<br>"
 legend_html += "</div>"
 m.get_root().html.add_child(folium.Element(legend_html))
 
-# Anzeigen
+# Streamlit Anzeige
 st_folium(m, width=1200, height=800)
