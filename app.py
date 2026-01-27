@@ -90,7 +90,4 @@ fig.update_traces(
 # Umrisse
 fig.update_traces(marker_line_width=1, marker_line_color="black")
 
-# Scroll-Zoom aktivieren
-fig.update_mapboxes(scrollZoom=True)
-
 st.plotly_chart(fig, use_container_width=True)
