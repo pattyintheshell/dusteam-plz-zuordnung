@@ -50,7 +50,7 @@ for consultant, plz_list in plz_mapping.items():
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# 4) Farben festlegen (klarer)
+# 4) Farben festlegen
 # -----------------------------
 color_map = {
     'Dustin': '#1f77b4',    # blau
@@ -79,7 +79,7 @@ fig = px.choropleth_mapbox(
     center={"lat": 51.0, "lon": 10.0},
     opacity=0.6,
     hover_data={'plz2': True, 'consultant': True},
-    height=1000  # Karte höher
+    height=1000
 )
 
 # Hover nur Consultant + PLZ
@@ -91,8 +91,6 @@ fig.update_traces(
 fig.update_traces(marker_line_width=1, marker_line_color="black")
 
 # Scroll-Zoom aktivieren
-fig.update_layout(
-    mapbox=dict(scrollZoom=True)
-)
+fig.update_mapboxes(scrollZoom=True)
 
 st.plotly_chart(fig, use_container_width=True)
