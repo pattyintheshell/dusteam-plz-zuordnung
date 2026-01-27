@@ -3,7 +3,6 @@ import geopandas as gpd
 import plotly.express as px
 import requests
 from io import BytesIO
-import streamlit.components.v1 as components
 
 st.set_page_config(layout="wide")
 st.title("🗺️ Marktaufteilung Dusteam")
@@ -59,7 +58,7 @@ color_map = {
 }
 
 # -----------------------------
-# 5) Plotly Karte
+# 5) Karte plotten (ohne Scroll-Zoom)
 # -----------------------------
 fig = px.choropleth_mapbox(
     plz_gdf,
@@ -81,7 +80,4 @@ fig.update_traces(
     marker_line_color="black"
 )
 
-# -----------------------------
-# 6) Karte via HTML einbetten für direkten Scroll-Zoom
-# -----------------------------
-components.html(fig.to_html(include_plotlyjs='cdn'), height=1100, scrolling=True)
+st.plotly_chart(fig, use_container_width=True)
