@@ -1,96 +1,65 @@
 import streamlit as st
-import requests
 import geopandas as gpd
 import pandas as pd
-import io
 
-# =========================
-# KONFIG
-# =========================
+st.set_page_config(page_title="🗺️ Dusteam Marktverteilung PLZ", layout="wide")
+st.title("🗺️ Dusteam Marktverteilung PLZ")
+
 GITHUB_USER = "pattyintheshell"
 REPO = "dusteam-plz-zuordnung"
 
-BUNDESLAENDER_RELEASE_TAG = "v1.0-bundeslaender"
-PLZ_RELEASE_TAG = "v1.0-plz"
+# ---------- Direkt-Links (KEINE API) ----------
 
-# =========================
-# HILFSFUNKTIONEN
-# =========================
+BUNDESLAENDER_URL = (
+    "https://github.com/pattyintheshell/dusteam-plz-zuordnung/"
+    "releases/download/v1.0-bundeslaender/bundeslaender.geojson"
+)
 
-def get_release_assets_urls(user, repo, tag):
-    url = f"https://api.github.com/repos/{user}/{repo}/releases/tags/{tag}"
-    r = requests.get(url)
-    r.raise_for_status()
-    data = r.json()
+PLZ_FILES = [
+    "badenwuerttemberg.geojson",
+    "bayern.geojson",
+    "berlin.geojson",
+    "brandenburg.geojson",
+    "bremen.geojson",
+    "hamburg.geojson",
+    "hessen.geojson",
+    "mecklenburgvorpommern.geojson",
+    "niedersachsen.geojson",
+    "nordrheinwestfalen.geojson",
+    "rheinlandpfalz.geojson",
+    "saarland.geojson",
+    "sachsen.geojson",
+    "sachsenanhalt.geojson",
+    "schleswigholstein.geojson",
+    "thueringen.geojson",
+]
 
-    urls = {}
-    for asset in data["assets"]:
-        name = asset["name"]
-        if name.endswith(".geojson"):
-            urls[name] = asset["browser_download_url"]
+PLZ_URLS = [
+    f"https://github.com/{GITHUB_USER}/{REPO}/releases/download/v1.0-plz/{name}"
+    for name in PLZ_FILES
+]
 
-    return urls
+# ---------- Laden ----------
 
-
-def read_geojson_from_github(url):
-    r = requests.get(url)
-    r.raise_for_status()
-    return gpd.read_file(io.BytesIO(r.content))
-
-
-def find_plz_column(gdf):
-    for col in gdf.columns:
-        if col.lower() in ["plz", "postcode", "postal_code", "zip"]:
-            return col
-    raise ValueError("Keine PLZ-Spalte gefunden.")
-
-
-# =========================
-# STREAMLIT UI
-# =========================
-
-st.set_page_config(layout="wide")
-st.title("🗺️ Dusteam Marktverteilung PLZ")
-
-st.write("Lade Geodaten aus GitHub Releases …")
-
-# =========================
-# DATEN LADEN
-# =========================
-
-try:
-    bundeslaender_urls = get_release_assets_urls(
-        GITHUB_USER, REPO, BUNDESLAENDER_RELEASE_TAG
-    )
-    plz_urls = get_release_assets_urls(
-        GITHUB_USER, REPO, PLZ_RELEASE_TAG
-    )
-
-    bundeslaender_gdf = read_geojson_from_github(
-        list(bundeslaender_urls.values())[0]
-    )
+@st.cache_data
+def load_data():
+    bundeslaender = gpd.read_file(BUNDESLAENDER_URL)
 
     plz_gdfs = []
-    for name, url in plz_urls.items():
-        gdf = read_geojson_from_github(url)
-
-        plz_col = find_plz_column(gdf)
-        gdf["PLZ"] = gdf[plz_col].astype(str)
-
+    for url in PLZ_URLS:
+        gdf = gpd.read_file(url)
         plz_gdfs.append(gdf)
 
-    plz_gdf = gpd.GeoDataFrame(
-        pd.concat(plz_gdfs, ignore_index=True),
-        crs=plz_gdfs[0].crs
-    )
+    plz = pd.concat(plz_gdfs, ignore_index=True)
+    return bundeslaender, plz
 
-except Exception as e:
-    st.error(f"Fehler beim Laden der Daten: {e}")
-    st.stop()
 
-# =========================
-# MAP
-# =========================
+with st.spinner("Lade Geodaten …"):
+    bundeslaender_gdf, plz_gdf = load_data()
 
 st.success("Daten erfolgreich geladen ✅")
+
+st.write("**Bundesländer:**", len(bundeslaender_gdf))
+st.write("**PLZ-Flächen:**", len(plz_gdf))
+
 st.map(plz_gdf)
