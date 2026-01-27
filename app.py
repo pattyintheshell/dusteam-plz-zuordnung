@@ -1,141 +1,62 @@
 import streamlit as st
 import geopandas as gpd
-import pydeck as pdk
+import plotly.express as px
 import requests
-import io
-from shapely.geometry import Polygon, MultiPolygon
+from io import BytesIO
 
 st.set_page_config(layout="wide")
-st.title("🗺️ Dusteam Marktverteilung PLZ")
+st.title("Vertriebsgebiete Deutschland")
 
-# -------------------------------
-# GitHub Release URL für PLZ-GeoJSON
-# -------------------------------
-PLZ_URL = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/releases/download/v1.1-plz2/plz_2er.geojson.geojson"
+# -----------------------------
+# 1. Bundesländer laden
+# -----------------------------
+bundeslaender_url = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/releases/download/v1.0-bundeslaender/bundeslaender_deutschland.geojson"
+bundeslaender_bytes = BytesIO(requests.get(bundeslaender_url).content)
+bundeslaender = gpd.read_file(bundeslaender_bytes)
 
-# -------------------------------
-# PLZ-Zuordnung zu Beratern
-# -------------------------------
-berater_mapping = {
-    "Dustin": ["77","78","79","88"],
-    "Tobias": ["81","82","83","84"],
-    "Philipp": ["32","33","40","41","42","43","44","45","46","47","48","50","51","52","53","56","57","58","59"],
-    "Vanessa": ["10","11","12","13","20","21","22"],
-    "Patricia": ["68","69","71","74","75","76"],
-    "Kathrin": ["80","85","86","87"],
-    "Sebastian": ["01","02","03","04","05","06","07","08","09","14","15","16","17","18","19"],
-    "Sumak": ["90","91","92","93","94","95","96","97"],
-    "Jonathan": ["70","72","73","89"],
+# -----------------------------
+# 2. PLZ laden
+# -----------------------------
+plz_url = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/releases/download/v1.0-plz/plz_deutschland.geojson"
+plz_bytes = BytesIO(requests.get(plz_url).content)
+plz = gpd.read_file(plz_bytes)
+
+# -----------------------------
+# 3. 2er PLZ zusammenführen
+# -----------------------------
+plz['plz2'] = plz['plz'].str[:2]
+plz_2er = plz.dissolve(by='plz2').reset_index()
+
+# -----------------------------
+# 4. Consultant-Zuordnung
+# -----------------------------
+# Hier einfach eure Vertriebszuordnung eintragen
+plz_mapping = {
+    '68': 'Anna',
+    '69': 'Ben',
+    '70': 'Clara',
+    '71': 'David',
+    # weitere 2er PLZ hier hinzufügen
 }
 
-# Farben pro Berater (RGBA)
-farben = {
-    "Dustin":[255,0,0,120],
-    "Tobias":[0,255,0,120],
-    "Philipp":[0,0,255,120],
-    "Vanessa":[255,165,0,120],
-    "Patricia":[255,192,203,120],
-    "Kathrin":[128,0,128,120],
-    "Sebastian":[0,255,255,120],
-    "Sumak":[255,255,0,120],
-    "Jonathan":[128,128,128,120],
-}
+plz_2er['consultant'] = plz_2er['plz2'].map(plz_mapping)
 
-# -------------------------------
-# Funktion: GeoJSON von GitHub laden
-# -------------------------------
-@st.cache_data
-def load_geojson(url):
-    try:
-        r = requests.get(url)
-        r.raise_for_status()
-        gdf = gpd.read_file(io.BytesIO(r.content))
-        return gdf
-    except Exception as e:
-        st.error(f"Fehler beim Laden der GeoJSON: {e}")
-        return None
+# -----------------------------
+# 5. Plot mit Plotly
+# -----------------------------
+fig = px.choropleth_mapbox(
+    plz_2er,
+    geojson=plz_2er.geometry,
+    locations=plz_2er.index,
+    color='consultant',
+    mapbox_style="carto-positron",
+    zoom=5,
+    center={"lat": 51.0, "lon": 10.0},
+    opacity=0.5,
+    hover_data={'plz2':True, 'consultant':True}
+)
 
-plz_gdf = load_geojson(PLZ_URL)
+# Bundesländer-Umriss drüberlegen
+fig.update_traces(marker_line_width=1, marker_line_color="black")
 
-# -------------------------------
-# PLZ-Spalte automatisch erkennen
-# -------------------------------
-if plz_gdf is not None:
-    plz_col = None
-    for col in plz_gdf.columns:
-        if col.lower() in ["plz","postcode","plz2","zip","zip_code"]:
-            plz_col = col
-            break
-    if not plz_col:
-        for col in plz_gdf.columns:
-            if plz_gdf[col].dtype in ["int64","object"]:
-                plz_col = col
-                break
-
-    if not plz_col:
-        st.error("Keine PLZ-Spalte gefunden.")
-    else:
-        # PLZ-2er extrahieren
-        plz_gdf["plz_2er"] = plz_gdf[plz_col].astype(str).str[:2]
-
-        # Berater zuordnen
-        def get_berater(plz2):
-            for name, plz_list in berater_mapping.items():
-                if plz2 in plz_list:
-                    return name
-            return "Unassigned"
-
-        plz_gdf["Berater"] = plz_gdf["plz_2er"].apply(get_berater)
-
-        # Farbe zuweisen
-        plz_gdf["color"] = plz_gdf["Berater"].apply(lambda x: farben.get(x,[200,200,200,100]))
-
-        # -------------------------------
-        # Polygone vereinfachen
-        # -------------------------------
-        # Toleranz: 0.01 (je größer, desto weniger Detail)
-        plz_gdf["geometry"] = plz_gdf["geometry"].simplify(tolerance=0.01, preserve_topology=True)
-
-        st.success(f"Daten erfolgreich geladen ✅\nPLZ-2er Gebiete: {len(plz_gdf)}")
-
-        # -------------------------------
-        # PyDeck Polygon Layer
-        # -------------------------------
-        def get_coordinates(geom):
-            if geom.geom_type == "Polygon":
-                return [list(geom.exterior.coords)]
-            elif geom.geom_type == "MultiPolygon":
-                return [list(p.exterior.coords) for p in geom.geoms]
-            else:
-                return []
-
-        plz_gdf["coordinates"] = plz_gdf["geometry"].apply(get_coordinates)
-
-        layer = pdk.Layer(
-            "PolygonLayer",
-            plz_gdf,
-            get_polygon="coordinates",
-            get_fill_color="color",
-            get_line_color=[0,0,0,200],
-            pickable=True,
-            auto_highlight=True,
-        )
-
-        view_state = pdk.ViewState(
-            longitude=10.5,
-            latitude=51.2,
-            zoom=5,
-            min_zoom=4,
-            max_zoom=10,
-            pitch=0,
-        )
-
-        r = pdk.Deck(
-            layers=[layer],
-            initial_view_state=view_state,
-            tooltip={"text": "{Berater}\nPLZ-2er: {plz_2er}"}
-        )
-
-        st.pydeck_chart(r)
-else:
-    st.error("Keine Daten zum Anzeigen.")
+st.plotly_chart(fig, use_container_width=True)
