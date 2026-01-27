@@ -19,16 +19,7 @@ if r.status_code != 200:
 plz_gdf = gpd.read_file(BytesIO(r.content))
 
 # -----------------------------
-# 2) Spalte für 2er-PLZ erstellen
-# -----------------------------
-if 'plz' not in plz_gdf.columns:
-    st.error("Keine PLZ-Spalte in der GeoJSON gefunden!")
-    st.stop()
-
-plz_gdf['plz2'] = plz_gdf['plz'].astype(str).str[:2]
-
-# -----------------------------
-# 3) Consultant-Zuordnung (nur aus deiner Liste)
+# 2) Consultant-Zuordnung über Index
 # -----------------------------
 plz_mapping = {
     'Dustin': ['77', '78', '79', '88'],
@@ -42,28 +33,28 @@ plz_mapping = {
     'Jonathan': ['70', '72', '73', '89']
 }
 
-# Mapping für schnelle Zuordnung
-plz2_to_consultant = {}
+# Mapping für schnelle Zuordnung über Index
+plz_index_to_consultant = {}
 for consultant, plz_list in plz_mapping.items():
     for p in plz_list:
-        plz2_to_consultant[p] = consultant
+        plz_index_to_consultant[int(p)] = consultant  # Index = int der 2er-PLZ
 
-# Consultant-Spalte erstellen: nur PLZ aus der Liste → sonst Unassigned
-plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
+# Consultant-Spalte erstellen: Index verwenden, sonst Unassigned
+plz_gdf['consultant'] = plz_gdf.index.map(lambda x: plz_index_to_consultant.get(int(x), "Unassigned"))
 
 # -----------------------------
-# 4) Karte plotten
+# 3) Karte plotten
 # -----------------------------
 fig = px.choropleth_mapbox(
     plz_gdf,
     geojson=plz_gdf.geometry,
-    locations=plz_gdf.index,  # Index für Polygonzuordnung
+    locations=plz_gdf.index,  # Index = 2er-PLZ-Gebiet
     color='consultant',
     mapbox_style="carto-positron",
     zoom=5,
     center={"lat": 51.0, "lon": 10.0},
     opacity=0.5,
-    hover_data={'plz2': True, 'consultant': True},
+    hover_data={'consultant': True},
     height=800
 )
 
