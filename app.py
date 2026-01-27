@@ -2,50 +2,34 @@ import streamlit as st
 import geopandas as gpd
 import plotly.express as px
 import requests
-import json
+from io import BytesIO
 
 st.set_page_config(layout="wide")
 st.title("🗺️ Marktaufteilung Dusteam")
 
 # -----------------------------
-# Funktion: GeoJSON von GitHub Release laden
+# 1) 2er-PLZ GeoJSON laden direkt von GitHub
 # -----------------------------
-def load_geojson_release_asset(url: str):
-    r = requests.get(url, allow_redirects=True)
-    if r.status_code != 200:
-        st.error(f"Fehler beim Download der Datei:\n{url}\nStatuscode: {r.status_code}")
-        st.stop()
-    try:
-        data = json.loads(r.content)
-        gdf = gpd.GeoDataFrame.from_features(data["features"])
-        return gdf
-    except Exception as e:
-        st.error(f"GeoJSON Parsing Fehler:\n{e}")
-        st.stop()
-
-# -----------------------------
-# 1) Bundesländer laden
-# -----------------------------
-bundeslaender_url = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/releases/download/v1.0-bundeslaender/bundeslaender_deutschland.geojson"
-bundeslaender = load_geojson_release_asset(bundeslaender_url)
-
-# -----------------------------
-# 2) PLZ-GeoJSON laden
-# -----------------------------
-plz_url = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/releases/download/v1.0-plz/plz_deutschland.geojson"
-plz_2er = load_geojson_release_asset(plz_url)
-
-# -----------------------------
-# 3) 2er-PLZ aus 'AGS_0' ableiten
-# -----------------------------
-if 'AGS_0' in plz_2er.columns:
-    plz_2er['plz2'] = plz_2er['AGS_0'].astype(str).str[:2]
-else:
-    st.error("Spalte 'AGS_0' nicht gefunden! Bitte prüfen.")
+geojson_url = "https://raw.githubusercontent.com/tdudek/de-plz-geojson/master/plz-2stellig.geojson"
+r = requests.get(geojson_url)
+if r.status_code != 200:
+    st.error(f"Fehler beim Laden der GeoJSON: {r.status_code}")
     st.stop()
 
+plz2_gdf = gpd.read_file(BytesIO(r.content))
+
 # -----------------------------
-# 4) Consultant-Zuordnung fix
+# 2) Prüfen, welche Spalte die PLZ enthält
+# -----------------------------
+# In dieser GeoJSON heißt die PLZ-Spalte wahrscheinlich 'plz'
+if 'plz' not in plz2_gdf.columns:
+    st.error("Keine PLZ-Spalte in der GeoJSON gefunden!")
+    st.stop()
+
+plz2_gdf['plz2'] = plz2_gdf['plz'].astype(str).str[:2]  # die ersten zwei Ziffern
+
+# -----------------------------
+# 3) Consultant-Zuordnung
 # -----------------------------
 plz_mapping = {
     'Dustin': ['77', '78', '79', '88'],
@@ -64,25 +48,24 @@ for consultant, plz_list in plz_mapping.items():
     for p in plz_list:
         plz2_to_consultant[p] = consultant
 
-plz_2er['consultant'] = plz_2er['plz2'].map(plz2_to_consultant)
+plz2_gdf['consultant'] = plz2_gdf['plz2'].map(plz2_to_consultant)
 
 # -----------------------------
-# 5) Karte plotten
+# 4) Karte plotten
 # -----------------------------
 fig = px.choropleth_mapbox(
-    plz_2er,
-    geojson=plz_2er.geometry,
-    locations=plz_2er.index,
+    plz2_gdf,
+    geojson=plz2_gdf.geometry,
+    locations=plz2_gdf.index,
     color='consultant',
     mapbox_style="carto-positron",
     zoom=5,
     center={"lat": 51.0, "lon": 10.0},
     opacity=0.5,
     hover_data={'plz2': True, 'consultant': True},
-    height=800  # Karte hoch setzen
+    height=800
 )
 
-# Bundesländer-Umriss darüber
 fig.update_traces(marker_line_width=1, marker_line_color="black")
 
 st.plotly_chart(fig, use_container_width=True)
