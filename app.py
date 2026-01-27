@@ -9,7 +9,7 @@ st.set_page_config(layout="wide")
 st.title("🗺️ Marktaufteilung Dusteam")
 
 # -----------------------------
-# 1) PLZ GeoJSON online laden
+# 1) PLZ GeoJSON direkt online laden
 # -----------------------------
 PLZ_URL = "https://raw.githubusercontent.com/tdudek/de-plz-geojson/master/plz-2stellig.geojson"
 
@@ -23,7 +23,6 @@ plz_gdf = gpd.read_file(BytesIO(r.content))
 # -----------------------------
 # 2) 2er-PLZ aus GeoJSON
 # -----------------------------
-# In dieser Datei sind die 2stellig definiert
 plz_gdf['plz2'] = plz_gdf['plz'].astype(str).str[:2]
 
 # -----------------------------
@@ -89,20 +88,18 @@ fig.update_traces(
 )
 
 # -----------------------------
-# 6) Echte schwebende, responsive Legende
+# 6) Schwebende, responsive Legende (kompatibel)
 # -----------------------------
-# proportional zur Kartenhöhe skalieren
 height = 1000
 title_font_size = max(18, int(height / 30))
 font_size = max(14, int(height / 40))
-padding = max(5, int(height / 80))
 
 legend_items = [
     'Dustin','Tobias','Philipp','Vanessa','Patricia',
     'Kathrin','Sebastian','Sumak','Jonathan','Unassigned'
 ]
 
-# Dummy‑Traces nur für die Legende
+# Dummy-Traces nur für die Legende
 for c in legend_items:
     fig.add_trace(go.Scattermapbox(
         lat=[None], lon=[None],
@@ -111,15 +108,12 @@ for c in legend_items:
         name=c
     ))
 
+# Layout ohne inkompatible Parameter
 fig.update_layout(
     legend=dict(
         title="Consultants",
         title_font=dict(color="black", size=title_font_size, family="Arial Black"),
         font=dict(color="black", size=font_size),
-        bgcolor="rgba(255,255,255,0.9)",
-        bordercolor="black",
-        borderwidth=2,
-        borderpad=padding,
         traceorder="normal",
         yanchor="top", y=0.99,
         xanchor="right", x=0.99
