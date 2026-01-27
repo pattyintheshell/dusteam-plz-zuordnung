@@ -6,31 +6,46 @@ from streamlit_folium import st_folium
 import os
 
 st.set_page_config(layout="wide")
-st.title("Dusteam PLZ Zuordnung")
+st.title("🗺️ Vertriebsregionen Deutschland")
 
-# 1️⃣ Bundesländer hochladen
-bundeslaender_file = st.file_uploader("Bundesländer GeoJSON", type="geojson")
+# -----------------------------
+# 1️⃣ Bundesländer-Datei hochladen
+# -----------------------------
+bundeslaender_file = st.file_uploader("Bundesländer GeoJSON hochladen", type="geojson")
 if bundeslaender_file is not None:
     bundeslaender_gdf = gpd.read_file(bundeslaender_file)
 
-# 2️⃣ PLZ-Dateien hochladen (mehrere)
-plz_files = st.file_uploader("PLZ GeoJSONs (mehrere auswählen)", type="geojson", accept_multiple_files=True)
-if plz_files:
+# -----------------------------
+# 2️⃣ Ordner mit PLZ-Dateien auswählen
+# -----------------------------
+st.info("Wähle bitte alle PLZ-Dateien im Ordner aus (STRG+A geht).")
+plz_files = st.file_uploader(
+    "PLZ GeoJSONs hochladen (mehrere auswählen)",
+    type="geojson",
+    accept_multiple_files=True
+)
+
+if bundeslaender_file is not None and plz_files:
+
+    # PLZ-Dateien laden
     plz_gdfs = [gpd.read_file(f) for f in plz_files]
     plz_gdf = gpd.GeoDataFrame(pd.concat(plz_gdfs, ignore_index=True), crs="EPSG:4326")
 
-    # 3️⃣ Consultant-Zuweisung
+    # -----------------------------
+    # 3️⃣ Consultants zuordnen
+    # -----------------------------
     CONSULTANTS = {
         "Dustin": ["77", "78", "79", "88"],
         "Tobias": ["81", "82", "83", "84"],
-        "Philipp": ["32", "33", "40", "41", "42", "43", "44", "45", "46", "47", "48", "50", "51", "52", "53", "56", "57", "58", "59"],
-        "Vanessa": ["10", "11", "12", "13", "20", "21", "22"],
-        "Patricia": ["68", "69", "71", "74", "75", "76"],
-        "Kathrin": ["80", "85", "86", "87"],
+        "Philipp": ["32","33","40","41","42","43","44","45","46","47","48","50","51","52","53","56","57","58","59"],
+        "Vanessa": ["10","11","12","13","20","21","22"],
+        "Patricia": ["68","69","71","74","75","76"],
+        "Kathrin": ["80","85","86","87"],
         "Sebastian": ["01","02","03","04","05","06","07","08","09","14","15","16","17","18","19"],
         "Sumak": ["90","91","92","93","94","95","96","97"],
         "Jonathan": ["70","72","73","89"]
     }
+
     COLORS = {
         "Dustin": "#1f77b4",
         "Tobias": "#ff7f0e",
@@ -49,10 +64,11 @@ if plz_files:
             if plz2 in plzs:
                 return name
         return "Unassigned"
-
     plz_gdf['consultant'] = plz_gdf['plz2'].apply(assign_consultant)
 
+    # -----------------------------
     # 4️⃣ Map erstellen
+    # -----------------------------
     m = folium.Map(location=[51.2, 10.4], zoom_start=6, tiles="cartodbpositron")
 
     for _, row in plz_gdf.iterrows():
@@ -68,7 +84,9 @@ if plz_files:
             tooltip=f"PLZ {row['plz']} – {row['consultant']}"
         ).add_to(m)
 
-    # 5️⃣ Legende
+    # -----------------------------
+    # 5️⃣ Legende hinzufügen
+    # -----------------------------
     legend_html = "<div style='position: fixed; bottom: 50px; left: 50px; background: white; padding: 10px; border:1px solid black;'>"
     legend_html += "<b>Consultants</b><br>"
     for name, color in COLORS.items():
@@ -77,3 +95,6 @@ if plz_files:
     m.get_root().html.add_child(folium.Element(legend_html))
 
     st_folium(m, width=1200, height=800)
+
+else:
+    st.info("Bitte zuerst Bundesländer und PLZ-Dateien hochladen.")
