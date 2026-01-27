@@ -36,7 +36,7 @@ plz_url = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/releases/dow
 plz_2er = load_geojson_release_asset(plz_url)
 
 # -----------------------------
-# 3) 2er-PLZ aus einer existierenden Spalte ableiten
+# 3) 2er-PLZ aus vorhandener Spalte ableiten
 # -----------------------------
 # Wir nehmen 'GEN', falls vorhanden, sonst Index als Key
 if 'GEN' in plz_2er.columns:
@@ -45,7 +45,7 @@ else:
     plz_2er['plz2'] = plz_2er.index.astype(str)
 
 # -----------------------------
-# 4) Consultant-Zuordnung
+# 4) Consultant-Zuordnung fix
 # -----------------------------
 plz_mapping = {
     'Dustin': ['77', '78', '79', '88'],
@@ -64,33 +64,22 @@ for consultant, plz_list in plz_mapping.items():
     for p in plz_list:
         plz2_to_consultant[p] = consultant
 
-plz_2er['consultant'] = plz_2er['plz2'].map(plz2_to_consultant).fillna("Unassigned")
+plz_2er['consultant'] = plz_2er['plz2'].map(plz2_to_consultant)
 
 # -----------------------------
-# 5) Dropdown: Consultant auswählen
-# -----------------------------
-all_consultants = ['All'] + sorted(plz_2er['consultant'].unique())
-selected = st.selectbox("Consultant auswählen:", all_consultants)
-
-if selected != 'All':
-    plz_plot = plz_2er[plz_2er['consultant'] == selected]
-else:
-    plz_plot = plz_2er
-
-# -----------------------------
-# 6) Karte plotten
+# 5) Karte plotten
 # -----------------------------
 fig = px.choropleth_mapbox(
-    plz_plot,
-    geojson=plz_plot.geometry,
-    locations=plz_plot.index,
+    plz_2er,
+    geojson=plz_2er.geometry,
+    locations=plz_2er.index,
     color='consultant',
     mapbox_style="carto-positron",
     zoom=5,
     center={"lat": 51.0, "lon": 10.0},
     opacity=0.5,
     hover_data={'plz2': True, 'consultant': True},
-    height=800  # höhere Karte für bessere Sichtbarkeit
+    height=800  # Karte hoch setzen
 )
 
 # Bundesländer-Umriss darüber
