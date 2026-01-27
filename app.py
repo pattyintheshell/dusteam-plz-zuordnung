@@ -19,14 +19,14 @@ if r.status_code != 200:
 plz2_gdf = gpd.read_file(BytesIO(r.content))
 
 # -----------------------------
-# 2) Prüfen, welche Spalte die PLZ enthält
+# 2) Spalte für 2er-PLZ erstellen
 # -----------------------------
-# In dieser GeoJSON heißt die PLZ-Spalte wahrscheinlich 'plz'
+# Die Spalte 'plz' enthält die 2er-PLZ
 if 'plz' not in plz2_gdf.columns:
     st.error("Keine PLZ-Spalte in der GeoJSON gefunden!")
     st.stop()
 
-plz2_gdf['plz2'] = plz2_gdf['plz'].astype(str).str[:2]  # die ersten zwei Ziffern
+plz2_gdf['plz2'] = plz2_gdf['plz'].astype(str).str[:2]
 
 # -----------------------------
 # 3) Consultant-Zuordnung
@@ -43,12 +43,14 @@ plz_mapping = {
     'Jonathan': ['70', '72', '73', '89']
 }
 
+# Mapping erstellen
 plz2_to_consultant = {}
 for consultant, plz_list in plz_mapping.items():
     for p in plz_list:
         plz2_to_consultant[p] = consultant
 
-plz2_gdf['consultant'] = plz2_gdf['plz2'].map(plz2_to_consultant)
+# Zuweisung, fehlende PLZ als "Unassigned"
+plz2_gdf['consultant'] = plz2_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
 # 4) Karte plotten
@@ -66,6 +68,7 @@ fig = px.choropleth_mapbox(
     height=800
 )
 
+# Bundesländer-Umriss hinzufügen
 fig.update_traces(marker_line_width=1, marker_line_color="black")
 
 st.plotly_chart(fig, use_container_width=True)
