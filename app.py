@@ -7,6 +7,9 @@ import json
 st.set_page_config(layout="wide")
 st.title("🗺️ Marktaufteilung Dusteam")
 
+# -----------------------------
+# Funktion: GeoJSON von GitHub Release laden
+# -----------------------------
 def load_geojson_release_asset(url: str):
     r = requests.get(url, allow_redirects=True)
     if r.status_code != 200:
@@ -27,40 +30,29 @@ bundeslaender_url = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/re
 bundeslaender = load_geojson_release_asset(bundeslaender_url)
 
 # -----------------------------
-# 2) PLZ laden
+# 2) PLZ-GeoJSON laden
 # -----------------------------
 plz_url = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/releases/download/v1.0-plz/plz_deutschland.geojson"
-plz = load_geojson_release_asset(plz_url)
+plz_2er = load_geojson_release_asset(plz_url)
 
 # -----------------------------
-# 3) 2er-PLZ automatisch aus geeigneter Spalte ableiten
+# 3) Consultant-Zuordnung
 # -----------------------------
-# Wir nehmen die Spalte "AGS", wenn sie existiert
-if 'AGS' in plz.columns:
-    plz['plz2'] = plz['AGS'].astype(str).str[:2]
-elif 'RS' in plz.columns:
-    plz['plz2'] = plz['RS'].astype(str).str[:2]
-else:
-    st.error("Keine geeignete Spalte für 2er-PLZ gefunden! Bitte prüfen.")
-    st.stop()
-
-# Alle Geometrien mit derselben 2er-PLZ zusammenführen
-plz_2er = plz.dissolve(by='plz2').reset_index()
-
-# -----------------------------
-# 4) Consultant-Zuordnung
-# -----------------------------
+# Jede Geometrie ist ein „2er-Gebiet“, hier manuell zuordnen
+# Du musst die keys anpassen, z.B. nach einem Feld wie 'GEN' oder 'AGS'
 plz_mapping = {
-    '68': 'Anna',
-    '69': 'Ben',
-    '70': 'Clara',
-    '71': 'David',
-    # weitere 2er-PLZ hier ergänzen
+    # Beispiel: 'GEN' = Ortsname, oder Index als Key
+    0: 'Anna',
+    1: 'Ben',
+    2: 'Clara',
+    3: 'David',
+    # weitere Geometrien hier ergänzen
 }
-plz_2er['consultant'] = plz_2er['plz2'].map(plz_mapping)
+
+plz_2er['consultant'] = plz_2er.index.map(plz_mapping)  # Index-basierte Zuordnung
 
 # -----------------------------
-# 5) Karte plotten
+# 4) Karte plotten
 # -----------------------------
 fig = px.choropleth_mapbox(
     plz_2er,
@@ -71,10 +63,10 @@ fig = px.choropleth_mapbox(
     zoom=5,
     center={"lat": 51.0, "lon": 10.0},
     opacity=0.5,
-    hover_data={'plz2': True, 'consultant': True}
+    hover_data={'consultant': True}
 )
 
-# Bundesländer-Umriss drüber
+# Bundesländer-Umriss darüber
 fig.update_traces(marker_line_width=1, marker_line_color="black")
 
 st.plotly_chart(fig, use_container_width=True)
