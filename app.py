@@ -7,9 +7,7 @@ from io import BytesIO
 st.set_page_config(layout="wide")
 st.title("🗺️ Marktaufteilung Dusteam")
 
-# -----------------------------
 # 1) 2er-PLZ GeoJSON laden
-# -----------------------------
 geojson_url = "https://raw.githubusercontent.com/tdudek/de-plz-geojson/master/plz-2stellig.geojson"
 r = requests.get(geojson_url)
 if r.status_code != 200:
@@ -18,14 +16,10 @@ if r.status_code != 200:
 
 plz_gdf = gpd.read_file(BytesIO(r.content))
 
-# -----------------------------
 # 2) 2er-PLZ erstellen
-# -----------------------------
 plz_gdf['plz2'] = plz_gdf['plz'].astype(str).str[:2]
 
-# -----------------------------
 # 3) Consultant-Zuordnung
-# -----------------------------
 plz_mapping = {
     'Dustin': ['77', '78', '79', '88'],
     'Tobias': ['81', '82', '83', '84'],
@@ -41,9 +35,7 @@ plz_mapping = {
 plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_list}
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
-# -----------------------------
 # 4) Farben
-# -----------------------------
 color_map = {
     'Dustin': '#1f77b4',
     'Tobias': '#ff7f0e',
@@ -57,9 +49,7 @@ color_map = {
     'Unassigned': '#c0c0c0'
 }
 
-# -----------------------------
 # 5) Karte plotten
-# -----------------------------
 fig = px.choropleth_mapbox(
     plz_gdf,
     geojson=plz_gdf.geometry,
@@ -74,28 +64,25 @@ fig = px.choropleth_mapbox(
     height=1000
 )
 
-# Hover nur Consultant + PLZ
 fig.update_traces(
     hovertemplate="<b>Consultant:</b> %{customdata[1]}<br><b>PLZ:</b> %{customdata[0]}<extra></extra>",
     marker_line_width=1,
     marker_line_color="black"
 )
 
-# -----------------------------
-# 6) Legende direkt in der Karte (größer)
-# -----------------------------
+# 6) Legende direkt in der Karte (groß)
 fig.update_layout(
     legend=dict(
         title="Consultants",
-        title_font=dict(color="black", size=16),
-        font=dict(color="black", size=14),
+        title_font=dict(color="black", size=48),
+        font=dict(color="black", size=42),
         yanchor="top",
         y=0.99,
         xanchor="right",
         x=0.99,
         bgcolor="white",
         bordercolor="black",
-        borderwidth=1
+        borderwidth=2
     )
 )
 
