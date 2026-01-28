@@ -47,18 +47,18 @@ plz_gdf['hover_text'] = plz_gdf.apply(
 )
 
 # -----------------------------
-# Farben pro Consultant (klar & transparent via opacity)
+# Farben pro Consultant (RGBA, transparent)
 farbe_map = {
-    "Dustin": "#FFD700",       # Gelb
-    "Patricia": "#FF0000",     # Rot
-    "Jonathan": "#FF8C00",     # Orange
-    "Philipp": "#1E90FF",      # Blau
-    "Tobias": "#32CD32",       # Grün
-    "Kathrin": "#A64ACF",      # Helleres Lila
-    "Sumak": "#00CED1",        # Cyan/Türkis
-    "Vanessa": "#FF69B4",      # Pink
-    "Sebastian": "#9932CC",    # Helleres Violett
-    "Unassigned": "#C8C8C8"    # Grau
+    "Dustin": "rgba(255, 215, 0, 0.4)",    # Gelb
+    "Patricia": "rgba(255, 0, 0, 0.4)",     # Rot
+    "Jonathan": "rgba(255, 140, 0, 0.4)",   # Orange
+    "Philipp": "rgba(30, 144, 255, 0.4)",   # Blau
+    "Tobias": "rgba(50, 205, 50, 0.4)",     # Grün
+    "Kathrin": "rgba(166, 74, 207, 0.4)",   # Helles Lila
+    "Sumak": "rgba(0, 206, 209, 0.4)",      # Cyan/Türkis
+    "Vanessa": "rgba(255, 105, 180, 0.4)",  # Pink
+    "Sebastian": "rgba(128, 0, 128, 0.4)",  # Dunkleres Violett
+    "Unassigned": "rgba(200, 200, 200, 0.4)"# Grau
 }
 
 # -----------------------------
@@ -95,11 +95,10 @@ for consultant, color in farbe_map.items():
         text=text_list,
         hoverinfo='text',
         name=consultant,
-        showlegend=False,
-        opacity=0.4
+        showlegend=False
     ))
 
-# Dummy-Traces für Legende
+# Dummy-Traces für Legende (exakte Farbe)
 for consultant, color in farbe_map.items():
     fig.add_trace(go.Scattermapbox(
         lon=[None], lat=[None],
