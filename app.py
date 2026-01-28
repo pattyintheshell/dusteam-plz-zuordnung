@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 import requests
 from io import BytesIO
 from shapely.geometry import Polygon, MultiPolygon
+from shapely.ops import unary_union
 
 # -----------------------------
 # 0) Titel
@@ -62,7 +63,7 @@ farbe_map = {
 }
 
 # -----------------------------
-# 4) Hover-Text
+# 4) Hover-Text vorbereiten
 # -----------------------------
 plz_gdf['hover_text'] = plz_gdf.apply(
     lambda row: f"PLZ: {row['plz2']}<br>Consultant: {row['consultant']}",
@@ -70,32 +71,39 @@ plz_gdf['hover_text'] = plz_gdf.apply(
 )
 
 # -----------------------------
-# 5) Karte mit je einem Trace pro Consultant
+# 5) Karte bauen: EIN Trace pro Consultant
 # -----------------------------
 fig = go.Figure()
 
 for consultant in plz_gdf['consultant'].unique():
-    subset = plz_gdf[plz_gdf['consultant']==consultant]
+    subset = plz_gdf[plz_gdf['consultant'] == consultant]
     if subset.empty:
         continue
     
-    for geom, hover in zip(subset.geometry, subset.hover_text):
-        polys = [geom] if geom.geom_type=="Polygon" else geom.geoms
-        for poly in polys:
-            lons, lats = zip(*poly.exterior.coords)
-            fig.add_trace(go.Scattermapbox(
-                lon=lons,
-                lat=lats,
-                mode='lines',
-                fill='toself',
-                fillcolor=farbe_map[consultant],
-                line=dict(color='black', width=1),
-                hoverinfo='text',
-                text=[hover]*len(lons),
-                showlegend=False   # KEINE automatische Legende
-            ))
+    # Alle Polygone zusammenfassen
+    merged_geom = unary_union(subset.geometry)
+    polys = [merged_geom] if merged_geom.geom_type == "Polygon" else list(merged_geom.geoms)
+    
+    # Jeden Polygon als Trace, aber gleiche Farbe und EIN Consultant
+    for poly in polys:
+        lons, lats = zip(*poly.exterior.coords)
+        # Hover-Text pro Polygon
+        hover_text = "<br>".join(subset['hover_text'])
+        fig.add_trace(go.Scattermapbox(
+            lon=lons,
+            lat=lats,
+            mode='lines',
+            fill='toself',
+            fillcolor=farbe_map[consultant],
+            line=dict(color='black', width=1),
+            hoverinfo='text',
+            text=[hover_text]*len(lons),
+            showlegend=False  # keine automatische Legende
+        ))
 
-# Bundesländer-Linien
+# -----------------------------
+# 6) Bundesländer Linien
+# -----------------------------
 bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
 for _, row in bl_gdf.iterrows():
     geom = row.geometry
@@ -111,6 +119,9 @@ for _, row in bl_gdf.iterrows():
             showlegend=False
         ))
 
+# -----------------------------
+# 7) Layout
+# -----------------------------
 fig.update_layout(
     mapbox_style="carto-positron",
     mapbox_zoom=5,
@@ -122,8 +133,11 @@ fig.update_layout(
 st.plotly_chart(fig, use_container_width=True)
 
 # -----------------------------
-# 6) Manuelle Streamlit-Legende
+# 8) Manuelle Legende in Streamlit
 # -----------------------------
 st.markdown("### Legende")
 for consultant, color in farbe_map.items():
-    st.markdown(f"<span style='display:inline-block;width:20px;height:20px;background-color:{color};margin-right:10px;'></span> {consultant}", unsafe_allow_html=True)
+    st.markdown(
+        f"<span style='display:inline-block;width:20px;height:20px;background-color:{color};margin-right:10px;'></span> {consultant}",
+        unsafe_allow_html=True
+    )
