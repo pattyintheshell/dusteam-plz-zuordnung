@@ -8,10 +8,7 @@ import json
 # -----------------------------
 # Streamlit Setup
 # -----------------------------
-st.set_page_config(
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
+st.set_page_config(layout="wide")
 st.title("🗺️ Marktaufteilung Dusteam")
 
 # -----------------------------
@@ -55,7 +52,7 @@ plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_l
 plz_gdf["consultant"] = plz_gdf["plz2"].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# 3) Farben (RGB)
+# 3) Farben (RGB), Braun ersetzt durch Orange
 # -----------------------------
 color_map = {
     "Dustin": [31,119,180],
@@ -63,7 +60,7 @@ color_map = {
     "Philipp": [44,160,44],
     "Vanessa": [214,39,40],
     "Patricia": [148,103,189],
-    "Kathrin": [140,86,75],
+    "Kathrin": [255,165,0],  # Braun ersetzt
     "Sebastian": [227,119,194],
     "Sumak": [23,190,207],
     "Jonathan": [188,189,34],
@@ -72,14 +69,26 @@ color_map = {
 plz_gdf["fill_color"] = plz_gdf["consultant"].map(color_map)
 
 # -----------------------------
-# 4) Farben in GeoJSON Properties schreiben
+# 4) Bundesland-Zuordnung für Tooltip
+# -----------------------------
+bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
+plz_gdf_with_bl = gpd.sjoin(plz_gdf, bl_gdf[['name','geometry']], how='left', predicate='intersects')
+plz_gdf['tooltip_text'] = (
+    "PLZ: " + plz_gdf_with_bl['plz2'] +
+    "<br>Consultant: " + plz_gdf_with_bl['consultant'] +
+    "<br>Bundesland: " + plz_gdf_with_bl['name'].fillna("Unbekannt")
+)
+
+# -----------------------------
+# 5) Farben & Tooltip in GeoJSON
 # -----------------------------
 plz_geojson = json.loads(plz_gdf.to_json())
 for i, feature in enumerate(plz_geojson["features"]):
     feature["properties"]["fill_color"] = plz_gdf.loc[i, "fill_color"]
+    feature["properties"]["tooltip_text"] = plz_gdf.loc[i, "tooltip_text"]
 
 # -----------------------------
-# 5) Pydeck Layers
+# 6) Pydeck Layers
 # -----------------------------
 plz_layer = pdk.Layer(
     "GeoJsonLayer",
@@ -88,7 +97,8 @@ plz_layer = pdk.Layer(
     get_line_color=[0,0,0],
     line_width_min_pixels=1,
     pickable=True,
-    auto_highlight=True
+    auto_highlight=True,
+    tooltip={"html": "{tooltip_text}"}
 )
 
 bl_layer = pdk.Layer(
@@ -101,33 +111,29 @@ bl_layer = pdk.Layer(
 )
 
 # -----------------------------
-# 6) ViewState
+# 7) ViewState: Europa sichtbar
 # -----------------------------
 view_state = pdk.ViewState(
     latitude=51.0,
     longitude=10.0,
-    zoom=5
+    zoom=4.5,
+    min_zoom=3,
+    max_zoom=8
 )
 
-# -----------------------------
-# 7) Deck erstellen
-# -----------------------------
 deck = pdk.Deck(
     layers=[plz_layer, bl_layer],
     initial_view_state=view_state,
-    map_style="mapbox://styles/mapbox/light-v9",
-    tooltip={"text": "{consultant}"}
+    map_style="mapbox://styles/mapbox/light-v9"
 )
 
-# -----------------------------
-# 8) Anzeige in Streamlit
-# -----------------------------
 st.pydeck_chart(deck, use_container_width=True)
 
 # -----------------------------
-# 9) Rechte, vertikale Legende über Karte
+# 8) Rechte, vertikale Legende über Karte
 # -----------------------------
-legend_html = "<div style='position:absolute; top:10px; right:10px; background:white; padding:10px; border:1px solid black; z-index:999;'>"
+legend_html = "<div style='position:absolute; top:20px; right:20px; background:white; padding:10px; border:1px solid black; z-index:999;'>"
+legend_html += "<b>Consultants</b><br><br>"
 for name, rgb in color_map.items():
     legend_html += (
         f"<div style='display:flex; align-items:center; margin-bottom:4px;'>"
