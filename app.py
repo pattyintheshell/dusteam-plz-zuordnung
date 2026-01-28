@@ -1,7 +1,6 @@
 import streamlit as st
 import geopandas as gpd
 import plotly.graph_objects as go
-import pandas as pd
 import requests
 from io import BytesIO
 
@@ -55,7 +54,7 @@ categories = ['Dustin','Tobias','Philipp','Vanessa','Patricia','Kathrin',
 # -----------------------------
 fig = go.Figure()
 
-# Polygon-Traces (kein Legenden-Eintrag!)
+# Polygon-Traces (keine automatische Legende)
 for _, row in plz_gdf.iterrows():
     geom = row.geometry
     polygons = [geom] if geom.type == "Polygon" else geom.geoms
@@ -70,24 +69,22 @@ for _, row in plz_gdf.iterrows():
             line=dict(color='black', width=1),
             hoverinfo='text',
             text=f"PLZ: {row['plz2']}<br>Consultant: {row['consultant']}",
-            showlegend=False  # ⚠️ Legende nur Dummy-Traces
+            showlegend=False  # ⚠️ Polygon-Traces erzeugen keine Legende
         ))
 
-# -----------------------------
-# 5) Dummy-Traces nur für die Legende (exakt 1 Eintrag pro Consultant)
-# -----------------------------
+# Dummy-Traces nur für Legende (Quadrat)
 for consultant in categories:
     fig.add_trace(go.Scattermapbox(
         lon=[None],
         lat=[None],
         mode='markers',
-        marker=dict(size=10, color=color_map[consultant]),
+        marker=dict(size=15, color=color_map[consultant], symbol='square'),
         name=consultant,
         showlegend=True
     ))
 
 # -----------------------------
-# 6) Layout
+# 5) Layout
 # -----------------------------
 fig.update_layout(
     mapbox_style="carto-positron",
@@ -105,4 +102,4 @@ fig.update_layout(
     )
 )
 
-st.plotly_chart(fig, use_container_width=True)
+st
