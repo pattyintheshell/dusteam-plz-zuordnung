@@ -1,12 +1,10 @@
 import streamlit as st
 import geopandas as gpd
-import plotly.express as px
 import plotly.graph_objects as go
 import requests
 from io import BytesIO
-import plotly.colors as pc
+import plotly.express as px
 
-# -----------------------------
 st.set_page_config(layout="wide")
 st.title("🗺️ Marktaufteilung DE Perm Embedded Team")
 
@@ -41,10 +39,9 @@ plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_l
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# Automatische Farbauswahl für beliebig viele Consultants
-consultants = [c for c in plz_mapping.keys()]
-num_consultants = len(consultants)
-palette = px.colors.qualitative.Dark24  # max 24 unterschiedliche Farben
+# Automatische Farbauswahl
+consultants = list(plz_mapping.keys())
+palette = px.colors.qualitative.Dark24
 farbe_map = {}
 for i, c in enumerate(consultants):
     base_color = palette[i % len(palette)]
@@ -52,12 +49,11 @@ for i, c in enumerate(consultants):
 farbe_map["Unassigned"] = "rgba(200,200,200,0.4)"
 
 # -----------------------------
-# Bundesländer joinen
+# Join Bundesländer
 bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
 plz_with_bl = gpd.sjoin(plz_gdf, bl_gdf[['name','geometry']], how='left', predicate='intersects')
 plz_with_bl = plz_with_bl.reset_index(drop=True)
 
-# -----------------------------
 # Hover-Text untereinander
 plz_with_bl['hover_text'] = plz_with_bl.apply(
     lambda row: f"{row['plz2']}<br>{row['name'] if row['name'] else 'Unbekannt'}<br>{row['consultant']}",
@@ -65,37 +61,44 @@ plz_with_bl['hover_text'] = plz_with_bl.apply(
 )
 
 # -----------------------------
-# Spalten: Karte links, Legende rechts
 col1, col2 = st.columns([3,1])
 
 with col1:
     fig = go.Figure()
 
-    # Wir gruppieren direkt nach Consultant und nutzen MultiPolygons
+    # Polygon-Iteration pro Consultant
     for consultant, group in plz_with_bl.groupby("consultant"):
-        fig.add_trace(go.Choroplethmapbox(
-            geojson=group.__geo_interface__,
-            locations=group.index,
-            z=[1]*len(group),
-            showscale=False,
-            marker_opacity=0.4,
-            marker_line_width=1,
-            marker_line_color="black",
-            hovertext=group['hover_text'],
-            hoverinfo="text",
-            colorscale=[[0, farbe_map[consultant]], [1, farbe_map[consultant]]],  # Einheitliche Farbe
-            name=consultant
-        ))
+        for geom, hover in zip(group.geometry, group.hover_text):
+            if geom.geom_type == "Polygon":
+                polys = [geom]
+            elif geom.geom_type == "MultiPolygon":
+                polys = list(geom.geoms)
+            else:
+                continue
+
+            for poly in polys:
+                lons, lats = zip(*poly.exterior.coords)
+                fig.add_trace(go.Scattermapbox(
+                    lon=list(lons)+[None],
+                    lat=list(lats)+[None],
+                    mode="lines",
+                    fill="toself",
+                    fillcolor=farbe_map[consultant],
+                    line=dict(color="black", width=1),
+                    hoverinfo="text",
+                    text=[hover]*len(lons),
+                    showlegend=False
+                ))
 
     # Bundesländer Linien
     for geom in bl_gdf.geometry:
         if geom.geom_type == "Polygon":
-            lon, lat = geom.exterior.xy
-            fig.add_trace(go.Scattermapbox(lon=lon, lat=lat, mode="lines", line=dict(color="black", width=2), hoverinfo="skip", showlegend=False))
+            lons, lats = zip(*geom.exterior.coords)
+            fig.add_trace(go.Scattermapbox(lon=list(lons), lat=list(lats), mode="lines", line=dict(color="black", width=2), hoverinfo="skip", showlegend=False))
         elif geom.geom_type == "MultiPolygon":
             for poly in geom.geoms:
-                lon, lat = poly.exterior.xy
-                fig.add_trace(go.Scattermapbox(lon=lon, lat=lat, mode="lines", line=dict(color="black", width=2), hoverinfo="skip", showlegend=False))
+                lons, lats = zip(*poly.exterior.coords)
+                fig.add_trace(go.Scattermapbox(lon=list(lons), lat=list(lats), mode="lines", line=dict(color="black", width=2), hoverinfo="skip", showlegend=False))
 
     fig.update_layout(
         mapbox_style="carto-positron",
