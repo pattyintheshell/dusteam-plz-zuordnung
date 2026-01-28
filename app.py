@@ -40,9 +40,14 @@ plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_l
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
+# Join mit Bundesländer für Hover-Text
+bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
+plz_with_bl = gpd.sjoin(plz_gdf, bl_gdf[['name','geometry']], how='left', predicate='intersects')
+plz_with_bl = plz_with_bl.reset_index(drop=True)
+
 # Hover-Text pro PLZ (untereinander)
-plz_gdf['hover_text'] = plz_gdf.apply(
-    lambda row: f"{row['plz2']}\n{row['name'] if 'name' in row else 'Unbekannt'}\n{row['consultant']}",
+plz_with_bl['hover_text'] = plz_with_bl.apply(
+    lambda row: f"{row['plz2']}\n{row['name'] if row['name'] else 'Unbekannt'}\n{row['consultant']}",
     axis=1
 )
 
@@ -56,8 +61,8 @@ farbe_map = {
     "Tobias": "rgba(0, 100, 0, 0.4)",         # Dunkleres Grün
     "Kathrin": "rgba(186, 85, 211, 0.4)",     # Helles Lila
     "Sumak": "rgba(0, 206, 209, 0.4)",        # Cyan/Türkis
-    "Vanessa": "rgba(255, 20, 147, 0.4)",     # Kräftiges Pink
-    "Sebastian": "rgba(120, 220, 120, 0.4)",  # Hellgrün minimal dunkler
+    "Vanessa": "rgba(255, 0, 180, 0.4)",      # Kräftiges Magenta
+    "Sebastian": "rgba(110, 210, 110, 0.4)",  # Hellgrün minimal dunkler
     "Unassigned": "rgba(200, 200, 200, 0.4)"  # Grau
 }
 
@@ -67,7 +72,7 @@ fig = go.Figure()
 
 # Flächen-Trace
 for consultant, color in farbe_map.items():
-    subset = plz_gdf[plz_gdf['consultant'] == consultant]
+    subset = plz_with_bl[plz_with_bl['consultant'] == consultant]
     if subset.empty:
         continue
 
@@ -110,7 +115,6 @@ for consultant, color in farbe_map.items():
 
 # -----------------------------
 # Bundesländer Umrisse
-bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
 for geom in bl_gdf.geometry:
     polys = [geom] if geom.geom_type=='Polygon' else geom.geoms
     for poly in polys:
@@ -136,8 +140,8 @@ fig.update_layout(
     width=800,
     legend=dict(
         title="Consultants",
-        title_font=dict(size=20),   # größere Titel
-        font=dict(size=16),         # größere Schrift
+        title_font=dict(size=20),
+        font=dict(size=16),
         x=0.99,
         y=0.99,
         xanchor="right",
@@ -146,7 +150,7 @@ fig.update_layout(
     )
 )
 
-# Sortiere die Dummy-Traces für die Legende
+# Sortiere Dummy-Traces für Legende alphabetisch
 new_order = []
 for name in legend_order:
     for trace in fig.data:
