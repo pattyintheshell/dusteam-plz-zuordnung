@@ -5,6 +5,9 @@ import requests
 from io import BytesIO
 from shapely.geometry import Polygon, MultiPolygon
 
+# -----------------------------
+# 0) Titel
+# -----------------------------
 st.set_page_config(layout="wide")
 st.title("🗺️ Marktaufteilung DE Perm Embedded")
 
@@ -43,13 +46,13 @@ plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_l
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# 3) Einheitliche, transparente Farben pro Consultant
+# 3) Farben pro Consultant (klar unterscheidbare Farbfamilien)
 # -----------------------------
 color_map = {
     # Blau-Familie
     "Dustin": "rgba(31,119,180,0.5)",      # dunkelblau
     "Patricia": "rgba(70,130,180,0.5)",    # mittelblau
-    "Jonathan": "rgba(173,216,230,0.5)",   # hellblau / skyblue
+    "Jonathan": "rgba(173,216,230,0.5)",   # hellblau
 
     # Orange-Familie
     "Tobias": "rgba(255,127,14,0.5)",
@@ -68,20 +71,19 @@ color_map = {
 categories = list(color_map.keys())
 
 # -----------------------------
-# 4) Bundesländer-Zuordnung + Hover
+# 4) Bundesländer-Zuordnung + Hover-Text
 # -----------------------------
 bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
 plz_with_bl = gpd.sjoin(plz_gdf, bl_gdf[['name','geometry']], how='left', predicate='intersects')
 plz_with_bl = plz_with_bl.reset_index(drop=True)
 
-# Hover-Text untereinander
 plz_with_bl['hover_text'] = plz_with_bl.apply(
     lambda row: f"{row['plz2']}\n{row['name'] if row['name'] else 'Unbekannt'}\n{row['consultant']}",
     axis=1
 )
 
 # -----------------------------
-# 5) Karte bauen: 1 Trace pro Consultant (alle Polygone zusammen)
+# 5) Karte bauen: EIN Trace pro Consultant (alle Polygone zusammen)
 # -----------------------------
 fig = go.Figure()
 
@@ -90,18 +92,18 @@ for consultant in categories:
     if subset.empty:
         continue
 
-    # Alle Polygone zusammenfassen
-    polygons = []
+    # Alle Polygone eines Consultants zusammenfassen
+    multi_polygons = []
     hover_texts = []
     for geom, hover_text in zip(subset.geometry, subset['hover_text']):
         if geom.geom_type == "Polygon":
-            polygons.append(geom)
+            multi_polygons.append(geom)
         elif geom.geom_type == "MultiPolygon":
-            polygons.extend(list(geom.geoms))
+            multi_polygons.extend(list(geom.geoms))
         hover_texts.append(hover_text)
 
-    # Für jedes Polygon einen kleinen Scattermapbox-Trace (ein Consultant = gleiche Farbe)
-    for poly in polygons:
+    # EIN Trace pro Consultant, alle Polygone durch MultiPolygon iterieren
+    for poly in multi_polygons:
         lons, lats = zip(*poly.exterior.coords)
         fig.add_trace(go.Scattermapbox(
             lon=lons + (None,),
@@ -113,7 +115,7 @@ for consultant in categories:
             hoverinfo='text',
             text=[hover_texts[0]]*len(lons)+[None],  # einfacher Hover pro Polygon
             name=consultant,
-            showlegend=True,
+            showlegend=True if poly == multi_polygons[0] else False,  # nur beim ersten Polygon Legende
             legendgroup=consultant,
             visible=True
         ))
