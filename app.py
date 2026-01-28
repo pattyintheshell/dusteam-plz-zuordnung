@@ -23,6 +23,7 @@ bl_gdf  = load_geojson(BL_URL)
 plz_gdf['plz2'] = plz_gdf['plz'].astype(str).str[:2]
 
 # -----------------------------
+# Consultant-Zuordnung
 plz_mapping = {
     "Dustin": ["77","78","79","88"],
     "Tobias": ["81","82","83","84"],
@@ -38,38 +39,45 @@ plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_l
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# Farben: klassische, unterscheidbare Töne, transparent
+# Farben pro Consultant, transparent
 farbe_map = {
-    "Dustin": "rgba(31,119,180,0.4)",     # blau
-    "Patricia": "rgba(255,127,14,0.4)",   # orange
-    "Jonathan": "rgba(44,160,44,0.4)",    # grün
-    "Tobias": "rgba(214,39,40,0.4)",      # rot
-    "Kathrin": "rgba(148,103,189,0.4)",   # lila
-    "Sumak": "rgba(255,152,150,0.4)",     # pink
-    "Vanessa": "rgba(255,187,120,0.4)",   # hellorange
-    "Sebastian": "rgba(31,119,180,0.4)",  # blau (doppelt, kann angepasst werden)
-    "Philipp": "rgba(44,160,44,0.4)",     # grün (doppelt, kann angepasst werden)
-    "Unassigned": "rgba(200,200,200,0.3)"
+    "Dustin": "rgba(31,119,180,0.4)",     # Blau
+    "Patricia": "rgba(255,127,14,0.4)",   # Orange
+    "Jonathan": "rgba(44,160,44,0.4)",    # Grün
+    "Tobias": "rgba(214,39,40,0.4)",      # Rot
+    "Kathrin": "rgba(148,103,189,0.4)",   # Lila
+    "Sumak": "rgba(255,152,150,0.4)",     # Pink
+    "Vanessa": "rgba(255,187,120,0.4)",   # Hellorange
+    "Sebastian": "rgba(23,190,207,0.4)",  # Cyan
+    "Philipp": "rgba(127,127,0,0.4)",     # Gelb/Olive
+    "Unassigned": "rgba(200,200,200,0.3)" # Grau nur für Unassigned
 }
 
 # -----------------------------
+# Bundesländer join
 bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
 plz_with_bl = gpd.sjoin(plz_gdf, bl_gdf[['name','geometry']], how='left', predicate='intersects')
 plz_with_bl = plz_with_bl.reset_index(drop=True)
 
+# Hover-Text untereinander
 plz_with_bl['hover_text'] = plz_with_bl.apply(
     lambda row: f"{row['plz2']}<br>{row['name'] if row['name'] else 'Unbekannt'}<br>{row['consultant']}",
     axis=1
 )
 
 # -----------------------------
+# Streamlit Spalten
 col1, col2 = st.columns([3,1])
 
 with col1:
     fig = go.Figure()
 
-    # 1 Trace pro 2er-PLZ Polygon
+    # 1 Trace pro Consultant, alle Polygone zusammen
     for consultant, group in plz_with_bl.groupby("consultant"):
+        all_lons = []
+        all_lats = []
+        all_text = []
+
         for geom, hover in zip(group.geometry, group.hover_text):
             if geom.geom_type == "Polygon":
                 polys = [geom]
@@ -80,17 +88,23 @@ with col1:
 
             for poly in polys:
                 lons, lats = zip(*poly.exterior.coords)
-                fig.add_trace(go.Scattermapbox(
-                    lon=list(lons)+[None],
-                    lat=list(lats)+[None],
-                    mode="lines",
-                    fill="toself",
-                    fillcolor=farbe_map.get(consultant,"rgba(200,200,200,0.3)"),
-                    line=dict(color="black", width=1),
-                    hoverinfo="text",
-                    text=[hover]*len(lons),
-                    showlegend=False
-                ))
+                all_lons.extend(lons + (None,))
+                all_lats.extend(lats + (None,))
+                all_text.extend([hover]*len(lons) + [None])
+
+        fig.add_trace(go.Scattermapbox(
+            lon=all_lons,
+            lat=all_lats,
+            mode="lines",
+            fill="toself",
+            fillcolor=farbe_map[consultant],
+            line=dict(color="black", width=1),
+            hoverinfo="text",
+            text=all_text,
+            name=consultant,
+            showlegend=True,
+            legendgroup=consultant
+        ))
 
     # Bundesländer Linien
     for geom in bl_gdf.geometry:
