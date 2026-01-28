@@ -3,6 +3,7 @@ import geopandas as gpd
 import pydeck as pdk
 import requests
 from io import BytesIO
+import json
 
 # -----------------------------
 # Streamlit Setup
@@ -32,6 +33,7 @@ BL_URL  = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/releases/dow
 
 plz_gdf = load_geojson_from_github(PLZ_URL)
 bl_gdf  = load_geojson_from_github(BL_URL)
+
 plz_gdf["plz2"] = plz_gdf["plz"].astype(str).str[:2]
 
 # -----------------------------
@@ -70,11 +72,18 @@ color_map = {
 plz_gdf["fill_color"] = plz_gdf["consultant"].map(color_map)
 
 # -----------------------------
-# 4) Pydeck Layers
+# 4) Farben in GeoJSON Properties schreiben
+# -----------------------------
+plz_geojson = json.loads(plz_gdf.to_json())
+for i, feature in enumerate(plz_geojson["features"]):
+    feature["properties"]["fill_color"] = plz_gdf.loc[i, "fill_color"]
+
+# -----------------------------
+# 5) Pydeck Layers
 # -----------------------------
 plz_layer = pdk.Layer(
     "GeoJsonLayer",
-    data=plz_gdf,
+    data=plz_geojson,
     get_fill_color="properties.fill_color",
     get_line_color=[0,0,0],
     line_width_min_pixels=1,
@@ -92,7 +101,7 @@ bl_layer = pdk.Layer(
 )
 
 # -----------------------------
-# 5) Pydeck ViewState
+# 6) ViewState
 # -----------------------------
 view_state = pdk.ViewState(
     latitude=51.0,
@@ -101,7 +110,7 @@ view_state = pdk.ViewState(
 )
 
 # -----------------------------
-# 6) Deck erstellen
+# 7) Deck erstellen
 # -----------------------------
 deck = pdk.Deck(
     layers=[plz_layer, bl_layer],
@@ -111,12 +120,12 @@ deck = pdk.Deck(
 )
 
 # -----------------------------
-# 7) Anzeige in Streamlit
+# 8) Anzeige in Streamlit
 # -----------------------------
 st.pydeck_chart(deck, use_container_width=True)
 
 # -----------------------------
-# 8) Legende selbst bauen
+# 9) Selbstgebaute Legende
 # -----------------------------
 st.markdown("### Legende")
 cols = st.columns(len(color_map))
