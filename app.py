@@ -59,7 +59,6 @@ for consultant in categories:
     subset = plz_gdf[plz_gdf['consultant'] == consultant]
     lons_all, lats_all, texts_all = [], [], []
 
-    # Alle Polygone eines Consultants zusammenfassen
     for _, row in subset.iterrows():
         geom = row.geometry
         polys = [geom] if isinstance(geom, Polygon) else geom.geoms
@@ -69,6 +68,7 @@ for consultant in categories:
             lats_all.extend(lats + (None,))
             texts_all.extend([f"PLZ: {row['plz2']}<br>Consultant: {consultant}"]*len(lons) + [None])
 
+    # Legende nur einmal pro Consultant
     fig.add_trace(go.Scattermapbox(
         lon=lons_all,
         lat=lats_all,
@@ -79,8 +79,8 @@ for consultant in categories:
         hoverinfo='text',
         text=texts_all,
         name=consultant,
-        showlegend=True,
-        legendgroup=consultant
+        showlegend=True,        # nur dieser Trace taucht in der Legende auf
+        legendgroup=consultant  # verhindert doppelte Einträge bei Mobil
     ))
 
 # -----------------------------
