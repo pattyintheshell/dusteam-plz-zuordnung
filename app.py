@@ -60,11 +60,12 @@ plz_gdf['hover_text'] = plz_gdf.apply(
 
 # -----------------------------
 fig = go.Figure()
+
+# PLZ-Gebiete zeichnen, KEINE Legende hier
 for consultant in plz_gdf['consultant'].unique():
     subset = plz_gdf[plz_gdf['consultant'] == consultant]
     if subset.empty:
         continue
-    
     for geom, hover in zip(subset.geometry, subset.hover_text):
         polys = [geom] if geom.geom_type == "Polygon" else geom.geoms
         for poly in polys:
@@ -78,10 +79,22 @@ for consultant in plz_gdf['consultant'].unique():
                 line=dict(color='black', width=1),
                 hoverinfo='text',
                 text=[hover]*len(lons),
-                showlegend=False  # KEINE automatische Legende mehr
+                showlegend=False
             ))
 
 # -----------------------------
+# Unsichtbare Traces nur für Legende
+for consultant, color in farbe_map.items():
+    fig.add_trace(go.Scattermapbox(
+        lon=[None], lat=[None],
+        mode='markers',
+        marker=dict(size=10, color=color),
+        name=consultant,
+        showlegend=True
+    ))
+
+# -----------------------------
+# Bundesländer Linien
 bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
 for _, row in bl_gdf.iterrows():
     geom = row.geometry
@@ -102,25 +115,17 @@ fig.update_layout(
     mapbox_style="carto-positron",
     mapbox_zoom=5,
     mapbox_center={"lat": 51.0, "lon": 10.0},
-    height=1000
+    height=1000,
+    legend=dict(
+        title="Consultants",
+        yanchor="top",
+        y=0.99,
+        xanchor="right",
+        x=0.99,
+        bgcolor="white",
+        bordercolor="black",
+        borderwidth=1
+    )
 )
 
 st.plotly_chart(fig, use_container_width=True)
-
-# -----------------------------
-# 8) Manuelle Legende oben rechts
-st.markdown("""
-<div style="position: absolute; top: 10px; right: 10px; background-color:white; padding:10px; border:1px solid black;">
-<strong>Consultants</strong><br>
-<span style="display:inline-block;width:20px;height:20px;background-color:rgba(31,119,180,0.4);margin-right:5px;"></span>Dustin<br>
-<span style="display:inline-block;width:20px;height:20px;background-color:rgba(0,162,232,0.4);margin-right:5px;"></span>Patricia<br>
-<span style="display:inline-block;width:20px;height:20px;background-color:rgba(102,204,255,0.4);margin-right:5px;"></span>Jonathan<br>
-<span style="display:inline-block;width:20px;height:20px;background-color:rgba(255,127,14,0.4);margin-right:5px;"></span>Tobias<br>
-<span style="display:inline-block;width:20px;height:20px;background-color:rgba(255,178,102,0.4);margin-right:5px;"></span>Kathrin<br>
-<span style="display:inline-block;width:20px;height:20px;background-color:rgba(255,210,120,0.4);margin-right:5px;"></span>Sumak<br>
-<span style="display:inline-block;width:20px;height:20px;background-color:rgba(214,39,40,0.4);margin-right:5px;"></span>Vanessa<br>
-<span style="display:inline-block;width:20px;height:20px;background-color:rgba(255,99,92,0.4);margin-right:5px;"></span>Sebastian<br>
-<span style="display:inline-block;width:20px;height:20px;background-color:rgba(44,160,44,0.4);margin-right:5px;"></span>Philipp<br>
-<span style="display:inline-block;width:20px;height:20px;background-color:rgba(200,200,200,0.4);margin-right:5px;"></span>Unassigned
-</div>
-""", unsafe_allow_html=True)
