@@ -45,14 +45,15 @@ bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
 plz_with_bl = gpd.sjoin(plz_gdf, bl_gdf[['name','geometry']], how='left', predicate='intersects')
 plz_with_bl = plz_with_bl.reset_index(drop=True)
 
-# Hover-Text untereinander
+# -----------------------------
+# Hover-Text pro PLZ untereinander
 plz_with_bl['hover_text'] = plz_with_bl.apply(
     lambda row: f"{row['plz2']}\n{row['name'] if row['name'] else 'Unbekannt'}\n{row['consultant']}",
     axis=1
 )
 
 # -----------------------------
-# Farben pro Consultant (RGBA, transparent)
+# Farben pro Consultant (transparent)
 farbe_map = {
     "Dustin": "rgba(255, 223, 0, 0.4)",       # Gelb
     "Patricia": "rgba(255, 0, 0, 0.4)",       # Rot
@@ -77,12 +78,7 @@ for consultant, color in farbe_map.items():
 
     lon_list, lat_list, text_list = [], [], []
     for geom, hover in zip(subset.geometry, subset['hover_text']):
-        if geom.geom_type == "Polygon":
-            polys = [geom]
-        elif geom.geom_type == "MultiPolygon":
-            polys = geom.geoms
-        else:
-            continue
+        polys = [geom] if geom.geom_type == "Polygon" else geom.geoms
         for poly in polys:
             lons, lats = zip(*poly.exterior.coords)
             lon_list.extend(lons + (None,))
