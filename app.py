@@ -80,7 +80,7 @@ plz_mit_bl['hover_text'] = plz_mit_bl.apply(
 )
 
 # -----------------------------
-# 5) Karte bauen (keine Legende)
+# 5) Karte bauen (Legende aus)
 # -----------------------------
 fig = go.Figure()
 
@@ -125,3 +125,8 @@ fig.update_layout(
 )
 
 st.plotly_chart(fig, use_container_width=True)
+
+# -----------------------------
+# 6) Manuelle Legende in Streamlit (optional später)
+# -----------------------------
+st.markdown("**Legende entfernt – Farben zeigen Consultant pro Gebiet**")
