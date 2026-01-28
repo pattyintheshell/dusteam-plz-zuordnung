@@ -56,7 +56,7 @@ farbe_map = {
     "Tobias": "rgba(0, 100, 0, 0.4)",         # Dunkelgrün
     "Kathrin": "rgba(120, 30, 180, 0.4)",     # Lila
     "Sumak": "rgba(0, 206, 209, 0.4)",        # Hellblau
-    "Vanessa": "rgba(255, 0, 180, 0.4)",      # Pink
+    "Vanessa": "rgba(255, 102, 204, 0.4)",    # Pink
     "Sebastian": "rgba(110, 210, 110, 0.4)",  # Hellgrün
     "Unassigned": "rgba(200, 200, 200, 0.4)"  # Grau
 }
