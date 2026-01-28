@@ -3,7 +3,6 @@ import geopandas as gpd
 import plotly.graph_objects as go
 import requests
 from io import BytesIO
-import plotly.express as px
 
 st.set_page_config(layout="wide")
 st.title("🗺️ Marktaufteilung DE Perm Embedded Team")
@@ -39,17 +38,17 @@ plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_l
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# Farben: sand, transparent, gut unterscheidbar
+# Farben: klassische, unterscheidbare Töne, transparent
 farbe_map = {
-    "Dustin": "rgba(194,178,128,0.4)",      # sand
-    "Patricia": "rgba(222,184,135,0.4)",    # heller sand
-    "Jonathan": "rgba(245,222,179,0.4)",    # wheat
-    "Tobias": "rgba(144,238,144,0.4)",      # hellgrün
-    "Kathrin": "rgba(152,251,152,0.4)",     # palegreen
-    "Sumak": "rgba(173,255,47,0.4)",        # greenyellow
-    "Vanessa": "rgba(255,182,193,0.4)",     # pink
-    "Sebastian": "rgba(221,160,221,0.4)",   # plum
-    "Philipp": "rgba(135,206,250,0.4)",     # skyblue
+    "Dustin": "rgba(31,119,180,0.4)",     # blau
+    "Patricia": "rgba(255,127,14,0.4)",   # orange
+    "Jonathan": "rgba(44,160,44,0.4)",    # grün
+    "Tobias": "rgba(214,39,40,0.4)",      # rot
+    "Kathrin": "rgba(148,103,189,0.4)",   # lila
+    "Sumak": "rgba(255,152,150,0.4)",     # pink
+    "Vanessa": "rgba(255,187,120,0.4)",   # hellorange
+    "Sebastian": "rgba(31,119,180,0.4)",  # blau (doppelt, kann angepasst werden)
+    "Philipp": "rgba(44,160,44,0.4)",     # grün (doppelt, kann angepasst werden)
     "Unassigned": "rgba(200,200,200,0.3)"
 }
 
@@ -69,7 +68,7 @@ col1, col2 = st.columns([3,1])
 with col1:
     fig = go.Figure()
 
-    # 1 Trace pro Consultant
+    # 1 Trace pro 2er-PLZ Polygon
     for consultant, group in plz_with_bl.groupby("consultant"):
         for geom, hover in zip(group.geometry, group.hover_text):
             if geom.geom_type == "Polygon":
@@ -86,7 +85,7 @@ with col1:
                     lat=list(lats)+[None],
                     mode="lines",
                     fill="toself",
-                    fillcolor=farbe_map[consultant],
+                    fillcolor=farbe_map.get(consultant,"rgba(200,200,200,0.3)"),
                     line=dict(color="black", width=1),
                     hoverinfo="text",
                     text=[hover]*len(lons),
