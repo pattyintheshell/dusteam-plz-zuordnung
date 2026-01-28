@@ -49,16 +49,16 @@ plz_gdf['hover_text'] = plz_gdf.apply(
 # -----------------------------
 # Farben pro Consultant (RGBA, transparent)
 farbe_map = {
-    "Dustin": "rgba(255, 223, 0, 0.4)",    # Gelb
-    "Patricia": "rgba(255, 0, 0, 0.4)",     # Rot
-    "Jonathan": "rgba(255, 102, 0, 0.4)",   # Dunkleres Orange
-    "Philipp": "rgba(30, 144, 255, 0.4)",   # Blau
-    "Tobias": "rgba(34, 139, 34, 0.4)",     # Dunkleres Grün
-    "Kathrin": "rgba(186, 85, 211, 0.4)",   # Helles Lila
-    "Sumak": "rgba(0, 206, 209, 0.4)",      # Cyan/Türkis
-    "Vanessa": "rgba(255, 20, 147, 0.4)",   # Kräftiges Pink
-    "Sebastian": "rgba(199, 21, 133, 0.4)", # Magenta / Pink-Violett
-    "Unassigned": "rgba(200, 200, 200, 0.4)"# Grau
+    "Dustin": "rgba(255, 223, 0, 0.4)",      # Gelb
+    "Patricia": "rgba(255, 0, 0, 0.4)",       # Rot
+    "Jonathan": "rgba(255, 102, 0, 0.4)",     # Orange
+    "Philipp": "rgba(30, 144, 255, 0.4)",     # Blau
+    "Tobias": "rgba(0, 100, 0, 0.4)",         # Dunkleres Grün
+    "Kathrin": "rgba(186, 85, 211, 0.4)",     # Helles Lila
+    "Sumak": "rgba(0, 206, 209, 0.4)",        # Cyan/Türkis
+    "Vanessa": "rgba(255, 20, 147, 0.4)",     # Kräftiges Pink
+    "Sebastian": "rgba(144, 238, 144, 0.4)",  # Hellgrün
+    "Unassigned": "rgba(200, 200, 200, 0.4)"  # Grau
 }
 
 # -----------------------------
@@ -98,12 +98,12 @@ for consultant, color in farbe_map.items():
         showlegend=False
     ))
 
-# Dummy-Traces für Legende (exakte Farbe)
+# Dummy-Traces für Legende (exakte Farbe, größere Marker)
 for consultant, color in farbe_map.items():
     fig.add_trace(go.Scattermapbox(
         lon=[None], lat=[None],
         mode='markers',
-        marker=dict(size=10, color=color),
+        marker=dict(size=14, color=color),
         name=consultant,
         showlegend=True
     ))
@@ -136,6 +136,8 @@ fig.update_layout(
     width=800,
     legend=dict(
         title="Consultants",
+        title_font=dict(size=20),   # größere Titel
+        font=dict(size=16),         # größere Schrift
         x=0.99,
         y=0.99,
         xanchor="right",
