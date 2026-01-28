@@ -50,42 +50,40 @@ categories = ['Dustin','Tobias','Philipp','Vanessa','Patricia','Kathrin',
               'Sebastian','Sumak','Jonathan','Unassigned']
 
 # -----------------------------
-# 4) Karte bauen
+# 4) Karte bauen: 1 Trace pro Consultant
 # -----------------------------
 fig = go.Figure()
 
-# Polygon-Traces: nur Hover, keine Legende
-for _, row in plz_gdf.iterrows():
-    geom = row.geometry
-    polys = [geom] if isinstance(geom, Polygon) else geom.geoms
-    for poly in polys:
-        lons, lats = zip(*poly.exterior.coords)
-        fig.add_trace(go.Scattermapbox(
-            lon=lons,
-            lat=lats,
-            mode='lines',
-            fill='toself',
-            fillcolor=color_map[row['consultant']],
-            line=dict(color='black', width=1),
-            hoverinfo='text',
-            text=f"PLZ: {row['plz2']}<br>Consultant: {row['consultant']}",
-            showlegend=False
-        ))
-
-# Dummy-Traces für Legende: 1 pro Consultant, legendgroup = Name
 for consultant in categories:
+    subset = plz_gdf[plz_gdf['consultant'] == consultant]
+    lons_all, lats_all, texts_all = [], [], []
+
+    # Alle Polygone eines Consultants zusammenfassen
+    for _, row in subset.iterrows():
+        geom = row.geometry
+        polys = [geom] if isinstance(geom, Polygon) else geom.geoms
+        for poly in polys:
+            lons, lats = zip(*poly.exterior.coords)
+            lons_all.extend(lons + (None,))
+            lats_all.extend(lats + (None,))
+            texts_all.extend([f"PLZ: {row['plz2']}<br>Consultant: {consultant}"]*len(lons) + [None])
+
     fig.add_trace(go.Scattermapbox(
-        lon=[None],
-        lat=[None],
-        mode='markers',
-        marker=dict(size=15, color=color_map[consultant], symbol='square'),
+        lon=lons_all,
+        lat=lats_all,
+        mode='lines',
+        fill='toself',
+        fillcolor=color_map[consultant],
+        line=dict(color='black', width=1),
+        hoverinfo='text',
+        text=texts_all,
         name=consultant,
-        legendgroup=consultant,   # verhindert doppelte Legenden
-        showlegend=True
+        showlegend=True,
+        legendgroup=consultant   # verhindert doppelte Legende auch auf Mobil
     ))
 
 # -----------------------------
-# 5) Layout + schwebender Kasten für Legende
+# 5) Layout: schwebende, mobilfreundliche Legende
 # -----------------------------
 fig.update_layout(
     mapbox_style="carto-positron",
