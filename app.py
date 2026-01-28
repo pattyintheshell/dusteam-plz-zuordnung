@@ -4,9 +4,6 @@ import plotly.graph_objects as go
 import requests
 from io import BytesIO
 
-# -----------------------------
-# Streamlit Setup
-# -----------------------------
 st.set_page_config(layout="wide")
 st.title("🗺️ Marktaufteilung Dusteam")
 
@@ -25,7 +22,6 @@ BL_URL  = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/releases/dow
 
 plz_gdf = load_geojson(PLZ_URL)
 bl_gdf  = load_geojson(BL_URL)
-
 plz_gdf['plz2'] = plz_gdf['plz'].astype(str).str[:2]
 
 # -----------------------------
@@ -42,12 +38,11 @@ plz_mapping = {
     "Sumak": ["90","91","92","93","94","95","96","97"],
     "Jonathan": ["70","72","73","89"]
 }
-
 plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_list}
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# 3) Transparente Farben nach Farbfamilie
+# 3) Farben (klar unterscheidbar + transparent)
 # -----------------------------
 color_map = {
     # Gruppe 1: Blautöne
@@ -67,26 +62,26 @@ color_map = {
     # Gruppe 4: Grüntöne
     "Philipp": "rgba(44,160,44,0.5)",
 
-    # Unassigned
     "Unassigned": "rgba(200,200,200,0.5)"
 }
 categories = list(color_map.keys())
 
 # -----------------------------
-# 4) Bundesland-Zuordnung für Hover
+# 4) Bundesland-Zuordnung + Hover
 # -----------------------------
 bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
 plz_with_bl = gpd.sjoin(plz_gdf, bl_gdf[['name','geometry']], how='left', predicate='intersects')
 plz_with_bl = plz_with_bl.reset_index(drop=True)
 
+# Kürzerer Hover
 plz_with_bl['hover_text'] = (
-    "PLZ: " + plz_with_bl['plz2'] +
-    "<br>Consultant: " + plz_with_bl['consultant'] +
-    "<br>Bundesland: " + plz_with_bl['name'].fillna("Unbekannt")
+    plz_with_bl['plz2'] + "\n" +
+    plz_with_bl['name'].fillna("Unbekannt") + "\n" +
+    plz_with_bl['consultant']
 )
 
 # -----------------------------
-# 5) Karte bauen: 1 Trace pro Consultant, interaktive Legende
+# 5) Karte bauen: 1 Trace pro Consultant
 # -----------------------------
 fig = go.Figure()
 
@@ -115,7 +110,7 @@ for consultant in categories:
         name=consultant,
         showlegend=True,
         legendgroup=consultant,
-        visible=True  # alle Consultant-Traces sichtbar, interaktiv
+        visible=True
     ))
 
 # -----------------------------
@@ -137,7 +132,7 @@ for _, row in bl_gdf.iterrows():
         ))
 
 # -----------------------------
-# 7) Layout
+# 7) Layout & Map
 # -----------------------------
 fig.update_layout(
     mapbox_style="carto-positron",
