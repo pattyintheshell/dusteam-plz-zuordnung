@@ -46,13 +46,13 @@ plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_l
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# 3) Farben pro Consultant (klar unterscheidbare Farbfamilien)
+# 3) Farben pro Consultant
 # -----------------------------
 color_map = {
     # Blau-Familie
-    "Dustin": "rgba(31,119,180,0.5)",      # dunkelblau
-    "Patricia": "rgba(70,130,180,0.5)",    # mittelblau
-    "Jonathan": "rgba(173,216,230,0.5)",   # hellblau
+    "Dustin": "rgba(31,119,180,0.5)",
+    "Patricia": "rgba(70,130,180,0.5)",
+    "Jonathan": "rgba(173,216,230,0.5)",
 
     # Orange-Familie
     "Tobias": "rgba(255,127,14,0.5)",
@@ -83,7 +83,7 @@ plz_with_bl['hover_text'] = plz_with_bl.apply(
 )
 
 # -----------------------------
-# 5) Karte bauen: EIN Trace pro Consultant (alle Polygone zusammen)
+# 5) Karte bauen: EIN Trace pro Consultant
 # -----------------------------
 fig = go.Figure()
 
@@ -92,33 +92,37 @@ for consultant in categories:
     if subset.empty:
         continue
 
-    # Alle Polygone eines Consultants zusammenfassen
-    multi_polygons = []
+    # Alle Polygone des Consultants sammeln
+    all_polys = []
     hover_texts = []
     for geom, hover_text in zip(subset.geometry, subset['hover_text']):
         if geom.geom_type == "Polygon":
-            multi_polygons.append(geom)
+            all_polys.append(geom)
         elif geom.geom_type == "MultiPolygon":
-            multi_polygons.extend(list(geom.geoms))
+            all_polys.extend(list(geom.geoms))
         hover_texts.append(hover_text)
 
-    # EIN Trace pro Consultant, alle Polygone durch MultiPolygon iterieren
-    for poly in multi_polygons:
+    # EIN Trace pro Consultant
+    lon_list, lat_list, text_list = [], [], []
+    for poly, hover_text in zip(all_polys, hover_texts):
         lons, lats = zip(*poly.exterior.coords)
-        fig.add_trace(go.Scattermapbox(
-            lon=lons + (None,),
-            lat=lats + (None,),
-            mode='lines',
-            fill='toself',
-            fillcolor=color_map[consultant],
-            line=dict(color='black', width=1),
-            hoverinfo='text',
-            text=[hover_texts[0]]*len(lons)+[None],  # einfacher Hover pro Polygon
-            name=consultant,
-            showlegend=True if poly == multi_polygons[0] else False,  # nur beim ersten Polygon Legende
-            legendgroup=consultant,
-            visible=True
-        ))
+        lon_list.extend(lons + (None,))
+        lat_list.extend(lats + (None,))
+        text_list.extend([hover_text]*len(lons) + [None])
+
+    fig.add_trace(go.Scattermapbox(
+        lon=lon_list,
+        lat=lat_list,
+        mode='lines',
+        fill='toself',
+        fillcolor=color_map[consultant],
+        line=dict(color='black', width=1),
+        hoverinfo='text',
+        text=text_list,
+        name=consultant,
+        showlegend=True,         # nur EIN Eintrag
+        legendgroup=consultant,
+    ))
 
 # -----------------------------
 # 6) Bundesländer als Linien
@@ -134,8 +138,7 @@ for _, row in bl_gdf.iterrows():
             mode='lines',
             line=dict(color='black', width=2),
             hoverinfo='skip',
-            showlegend=False,
-            visible=True
+            showlegend=False
         ))
 
 # -----------------------------
