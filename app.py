@@ -8,7 +8,7 @@ from io import BytesIO
 # 0) Titel
 # -----------------------------
 st.set_page_config(layout="wide")
-st.title("🗺️ Marktaufteilung DE Perm Embedded")
+st.title("🗺️ Marktaufteilung DE Perm Embedded Team")
 
 # -----------------------------
 # 1) GeoJSON laden
@@ -28,7 +28,7 @@ bl_gdf  = load_geojson(BL_URL)
 plz_gdf['plz2'] = plz_gdf['plz'].astype(str).str[:2]
 
 # -----------------------------
-# 2) Consultant Mapping
+# 2) Consultant Zuordnung
 # -----------------------------
 plz_mapping = {
     "Dustin": ["77","78","79","88"],
@@ -47,7 +47,7 @@ plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassign
 # -----------------------------
 # 3) Farben pro Consultant
 # -----------------------------
-color_map = {
+farbe_map = {
     "Dustin": "rgba(31,119,180,0.5)",
     "Patricia": "rgba(70,130,180,0.5)",
     "Jonathan": "rgba(173,216,230,0.5)",
@@ -59,16 +59,16 @@ color_map = {
     "Philipp": "rgba(44,160,44,0.5)",
     "Unassigned": "rgba(200,200,200,0.5)"
 }
-categories = list(color_map.keys())
+categories = list(farbe_map.keys())
 
 # -----------------------------
 # 4) Bundesländer-Zuordnung + Hover-Text
 # -----------------------------
 bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
-plz_with_bl = gpd.sjoin(plz_gdf, bl_gdf[['name','geometry']], how='left', predicate='intersects')
-plz_with_bl = plz_with_bl.reset_index(drop=True)
+plz_mit_bl = gpd.sjoin(plz_gdf, bl_gdf[['name','geometry']], how='left', predicate='intersects')
+plz_mit_bl = plz_mit_bl.reset_index(drop=True)
 
-plz_with_bl['hover_text'] = plz_with_bl.apply(
+plz_mit_bl['hover_text'] = plz_mit_bl.apply(
     lambda row: f"{row['plz2']}\n{row['name'] if row['name'] else 'Unbekannt'}\n{row['consultant']}",
     axis=1
 )
@@ -79,7 +79,7 @@ plz_with_bl['hover_text'] = plz_with_bl.apply(
 fig = go.Figure()
 
 for consultant in categories:
-    subset = plz_with_bl[plz_with_bl['consultant'] == consultant]
+    subset = plz_mit_bl[plz_mit_bl['consultant'] == consultant]
     if subset.empty:
         continue
 
@@ -93,25 +93,25 @@ for consultant in categories:
             lat_list.extend(lats + (None,))
             text_list.extend([hover_text]*len(lons) + [None])
 
-    # --- Map-Trace mit Hover ---
+    # --- Polygon-Trace mit Hover, Legende aus ---
     fig.add_trace(go.Scattermapbox(
         lon=lon_list,
         lat=lat_list,
         mode='lines',
         fill='toself',
-        fillcolor=color_map[consultant],
+        fillcolor=farbe_map[consultant],
         line=dict(color='black', width=1),
         hoverinfo='text',
         text=text_list,
-        showlegend=False  # Legende aus
+        showlegend=False
     ))
 
-    # --- Dummy-Trace nur für Legende ---
+    # --- Dummy-Trace für Legende ---
     fig.add_trace(go.Scattermapbox(
         lon=[None],
         lat=[None],
         mode='lines',
-        line=dict(color=color_map[consultant], width=1),
+        line=dict(color=farbe_map[consultant], width=1),
         name=consultant,
         showlegend=True
     ))
@@ -121,7 +121,7 @@ for consultant in categories:
 # -----------------------------
 for _, row in bl_gdf.iterrows():
     geom = row.geometry
-    polys = [geom] if geom.geom_type == 'Polygon' else geom.geoms
+    polys = [geom] if geom.geom_type=='Polygon' else geom.geoms
     for poly in polys:
         lons, lats = zip(*poly.exterior.coords)
         fig.add_trace(go.Scattermapbox(
