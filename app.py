@@ -55,7 +55,7 @@ categories = ['Dustin','Tobias','Philipp','Vanessa','Patricia','Kathrin',
 # -----------------------------
 fig = go.Figure()
 
-# Polygon-Traces (showlegend=False, damit keine Doppel-Legende)
+# Polygon-Traces (kein Legenden-Eintrag!)
 for _, row in plz_gdf.iterrows():
     geom = row.geometry
     polygons = [geom] if geom.type == "Polygon" else geom.geoms
@@ -70,11 +70,11 @@ for _, row in plz_gdf.iterrows():
             line=dict(color='black', width=1),
             hoverinfo='text',
             text=f"PLZ: {row['plz2']}<br>Consultant: {row['consultant']}",
-            showlegend=False  # ⚠️ KEINE Legende für Polygon-Traces
+            showlegend=False  # ⚠️ Legende nur Dummy-Traces
         ))
 
 # -----------------------------
-# 5) Dummy-Traces für Legende (genau 1 Eintrag pro Consultant)
+# 5) Dummy-Traces nur für die Legende (exakt 1 Eintrag pro Consultant)
 # -----------------------------
 for consultant in categories:
     fig.add_trace(go.Scattermapbox(
