@@ -59,66 +59,40 @@ farbe_map = {
     "Philipp": "rgba(44,160,44,0.5)",
     "Unassigned": "rgba(200,200,200,0.5)"
 }
-categories = list(farbe_map.keys())
 
 # -----------------------------
-# 4) Bundesländer-Zuordnung + Hover-Text
+# 4) Bundesländer-Zuordnung + Hover
 # -----------------------------
 bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
 plz_mit_bl = gpd.sjoin(plz_gdf, bl_gdf[['name','geometry']], how='left', predicate='intersects')
 plz_mit_bl = plz_mit_bl.reset_index(drop=True)
-
 plz_mit_bl['hover_text'] = plz_mit_bl.apply(
     lambda row: f"{row['plz2']}\n{row['name'] if row['name'] else 'Unbekannt'}\n{row['consultant']}",
     axis=1
 )
 
 # -----------------------------
-# 5) Karte bauen: Polygone + Dummy-Legende
+# 5) Karte bauen
 # -----------------------------
 fig = go.Figure()
 
-for consultant in categories:
-    subset = plz_mit_bl[plz_mit_bl['consultant'] == consultant]
-    if subset.empty:
-        continue
+for idx, row in plz_mit_bl.iterrows():
+    geom = row.geometry
+    polygons = [geom] if geom.geom_type=='Polygon' else geom.geoms
+    for poly in polygons:
+        lons, lats = zip(*poly.exterior.coords)
+        fig.add_trace(go.Scattermapbox(
+            lon=lons,
+            lat=lats,
+            mode='lines',
+            fill='toself',
+            fillcolor=farbe_map[row['consultant']],
+            line=dict(color='black', width=1),
+            hoverinfo='text',
+            text=[row['hover_text']]*len(lons)
+        ))
 
-    lon_list, lat_list, text_list = [], [], []
-
-    for geom, hover_text in zip(subset.geometry, subset['hover_text']):
-        polygons = [geom] if geom.geom_type == 'Polygon' else geom.geoms
-        for poly in polygons:
-            lons, lats = zip(*poly.exterior.coords)
-            lon_list.extend(lons + (None,))
-            lat_list.extend(lats + (None,))
-            text_list.extend([hover_text]*len(lons) + [None])
-
-    # --- Polygon-Trace mit Hover, Legende aus ---
-    fig.add_trace(go.Scattermapbox(
-        lon=lon_list,
-        lat=lat_list,
-        mode='lines',
-        fill='toself',
-        fillcolor=farbe_map[consultant],
-        line=dict(color='black', width=1),
-        hoverinfo='text',
-        text=text_list,
-        showlegend=False
-    ))
-
-    # --- Dummy-Trace für Legende ---
-    fig.add_trace(go.Scattermapbox(
-        lon=[None],
-        lat=[None],
-        mode='lines',
-        line=dict(color=farbe_map[consultant], width=1),
-        name=consultant,
-        showlegend=True
-    ))
-
-# -----------------------------
-# 6) Bundesländer als Linien
-# -----------------------------
+# Bundesländer als Linien
 for _, row in bl_gdf.iterrows():
     geom = row.geometry
     polys = [geom] if geom.geom_type=='Polygon' else geom.geoms
@@ -129,32 +103,23 @@ for _, row in bl_gdf.iterrows():
             lat=lats,
             mode='lines',
             line=dict(color='black', width=2),
-            hoverinfo='skip',
-            showlegend=False
+            hoverinfo='skip'
         ))
 
-# -----------------------------
-# 7) Layout
-# -----------------------------
+# Layout
 fig.update_layout(
     mapbox_style="carto-positron",
     mapbox_zoom=5,
     mapbox_center={"lat":51.0,"lon":10.0},
-    height=1000,
-    legend=dict(
-        title="Consultants",
-        title_font=dict(color="black", size=20, family="Arial Black"),
-        font=dict(color="black", size=16),
-        bgcolor="white",
-        bordercolor="black",
-        borderwidth=2,
-        x=0.99,
-        y=0.99,
-        xanchor="right",
-        yanchor="top",
-        traceorder="normal",
-        orientation="v"
-    )
+    height=1000
 )
 
 st.plotly_chart(fig, use_container_width=True)
+
+# -----------------------------
+# 6) Legende manuell in Streamlit
+# -----------------------------
+st.markdown("### Consultants")
+cols = st.columns(len(farbe_map))
+for i, (consultant, farbe) in enumerate(farbe_map.items()):
+    cols[i].markdown(f"<div style='background:{farbe};padding:10px;text-align:center;border-radius:5px'>{consultant}</div>", unsafe_allow_html=True)
