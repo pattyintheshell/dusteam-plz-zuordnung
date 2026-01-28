@@ -3,8 +3,6 @@ import geopandas as gpd
 import plotly.graph_objects as go
 import requests
 from io import BytesIO
-from shapely.geometry import Polygon, MultiPolygon
-from shapely.ops import unary_union
 
 # -----------------------------
 # 0) Titel
@@ -63,7 +61,7 @@ farbe_map = {
 }
 
 # -----------------------------
-# 4) Hover-Text vorbereiten
+# 4) Hover-Text
 # -----------------------------
 plz_gdf['hover_text'] = plz_gdf.apply(
     lambda row: f"PLZ: {row['plz2']}<br>Consultant: {row['consultant']}",
@@ -71,7 +69,7 @@ plz_gdf['hover_text'] = plz_gdf.apply(
 )
 
 # -----------------------------
-# 5) Karte bauen: EIN Trace pro Consultant
+# 5) Karte: Scattermapbox pro PLZ-Gebiet
 # -----------------------------
 fig = go.Figure()
 
@@ -80,26 +78,21 @@ for consultant in plz_gdf['consultant'].unique():
     if subset.empty:
         continue
     
-    # Alle Polygone zusammenfassen
-    merged_geom = unary_union(subset.geometry)
-    polys = [merged_geom] if merged_geom.geom_type == "Polygon" else list(merged_geom.geoms)
-    
-    # Jeden Polygon als Trace, aber gleiche Farbe und EIN Consultant
-    for poly in polys:
-        lons, lats = zip(*poly.exterior.coords)
-        # Hover-Text pro Polygon
-        hover_text = "<br>".join(subset['hover_text'])
-        fig.add_trace(go.Scattermapbox(
-            lon=lons,
-            lat=lats,
-            mode='lines',
-            fill='toself',
-            fillcolor=farbe_map[consultant],
-            line=dict(color='black', width=1),
-            hoverinfo='text',
-            text=[hover_text]*len(lons),
-            showlegend=False  # keine automatische Legende
-        ))
+    for geom, hover in zip(subset.geometry, subset.hover_text):
+        polys = [geom] if geom.geom_type == "Polygon" else geom.geoms
+        for poly in polys:
+            lons, lats = zip(*poly.exterior.coords)
+            fig.add_trace(go.Scattermapbox(
+                lon=lons,
+                lat=lats,
+                mode='lines',
+                fill='toself',
+                fillcolor=farbe_map[consultant],
+                line=dict(color='black', width=1),
+                hoverinfo='text',
+                text=[hover]*len(lons),
+                showlegend=False  # KEINE automatische Legende
+            ))
 
 # -----------------------------
 # 6) Bundesländer Linien
@@ -133,7 +126,7 @@ fig.update_layout(
 st.plotly_chart(fig, use_container_width=True)
 
 # -----------------------------
-# 8) Manuelle Legende in Streamlit
+# 8) Manuelle Streamlit-Legende
 # -----------------------------
 st.markdown("### Legende")
 for consultant, color in farbe_map.items():
