@@ -54,7 +54,7 @@ categories = ['Dustin','Tobias','Philipp','Vanessa','Patricia','Kathrin',
 # -----------------------------
 fig = go.Figure()
 
-# Polygon-Traces (keine automatische Legende)
+# Polygon-Traces (kein Legenden-Eintrag, nur Hover)
 for _, row in plz_gdf.iterrows():
     geom = row.geometry
     polygons = [geom] if geom.type == "Polygon" else geom.geoms
@@ -72,7 +72,7 @@ for _, row in plz_gdf.iterrows():
             showlegend=False  # ⚠️ Polygon-Traces erzeugen keine Legende
         ))
 
-# Dummy-Traces nur für Legende (Quadrat)
+# Dummy-Traces nur für Legende (Quadrat, 1 pro Consultant)
 for consultant in categories:
     fig.add_trace(go.Scattermapbox(
         lon=[None],
@@ -102,4 +102,4 @@ fig.update_layout(
     )
 )
 
-st
+st.plotly_chart(fig, use_container_width=True)
