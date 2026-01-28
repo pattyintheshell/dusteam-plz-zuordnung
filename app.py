@@ -1,6 +1,6 @@
 import streamlit as st
 import geopandas as gpd
-import plotly.express as px
+import plotly.graph_objects as go
 import requests
 from io import BytesIO
 
@@ -48,17 +48,18 @@ plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassign
 # 3) Farben pro Consultant
 # -----------------------------
 color_map = {
-    "Dustin": "#1f77b4",
-    "Patricia": "#4682b4",
-    "Jonathan": "#add8e6",
-    "Tobias": "#ff7f0e",
-    "Kathrin": "#ffa500",
-    "Sumak": "#ffc800",
-    "Vanessa": "#d62728",
-    "Sebastian": "#b22222",
-    "Philipp": "#2ca03c",
-    "Unassigned": "#c8c8c8"
+    "Dustin": "rgba(31,119,180,0.5)",
+    "Patricia": "rgba(70,130,180,0.5)",
+    "Jonathan": "rgba(173,216,230,0.5)",
+    "Tobias": "rgba(255,127,14,0.5)",
+    "Kathrin": "rgba(255,165,0,0.5)",
+    "Sumak": "rgba(255,200,0,0.5)",
+    "Vanessa": "rgba(214,39,40,0.5)",
+    "Sebastian": "rgba(178,34,34,0.5)",
+    "Philipp": "rgba(44,160,44,0.5)",
+    "Unassigned": "rgba(200,200,200,0.5)"
 }
+categories = list(color_map.keys())
 
 # -----------------------------
 # 4) Bundesländer-Zuordnung + Hover-Text
@@ -73,45 +74,72 @@ plz_with_bl['hover_text'] = plz_with_bl.apply(
 )
 
 # -----------------------------
-# 5) Choroplethmapbox Plot
+# 5) Karte bauen: Polygone + Dummy-Legende
 # -----------------------------
-# Wir brauchen für px.choropleth_mapbox ein GeoJSON-Feature
-plz_with_bl_json = plz_with_bl.__geo_interface__
+fig = go.Figure()
 
-fig = px.choropleth_mapbox(
-    plz_with_bl,
-    geojson=plz_with_bl_json,
-    locations=plz_with_bl.index,
-    color='consultant',
-    hover_name='hover_text',
-    color_discrete_map=color_map,
-    center={"lat":51.0,"lon":10.0},
-    zoom=5,
-    opacity=0.5
-)
+for consultant in categories:
+    subset = plz_with_bl[plz_with_bl['consultant'] == consultant]
+    if subset.empty:
+        continue
+
+    lon_list, lat_list, text_list = [], [], []
+
+    for geom, hover_text in zip(subset.geometry, subset['hover_text']):
+        polygons = [geom] if geom.geom_type == 'Polygon' else geom.geoms
+        for poly in polygons:
+            lons, lats = zip(*poly.exterior.coords)
+            lon_list.extend(lons + (None,))
+            lat_list.extend(lats + (None,))
+            text_list.extend([hover_text]*len(lons) + [None])
+
+    # --- Map-Trace mit Hover ---
+    fig.add_trace(go.Scattermapbox(
+        lon=lon_list,
+        lat=lat_list,
+        mode='lines',
+        fill='toself',
+        fillcolor=color_map[consultant],
+        line=dict(color='black', width=1),
+        hoverinfo='text',
+        text=text_list,
+        showlegend=False  # Legende aus
+    ))
+
+    # --- Dummy-Trace nur für Legende ---
+    fig.add_trace(go.Scattermapbox(
+        lon=[None],
+        lat=[None],
+        mode='lines',
+        line=dict(color=color_map[consultant], width=1),
+        name=consultant,
+        showlegend=True
+    ))
 
 # -----------------------------
-# 6) Bundesländer als Linien (optional)
+# 6) Bundesländer als Linien
 # -----------------------------
 for _, row in bl_gdf.iterrows():
     geom = row.geometry
-    polygons = [geom] if geom.geom_type=='Polygon' else geom.geoms
-    for poly in polygons:
+    polys = [geom] if geom.geom_type == 'Polygon' else geom.geoms
+    for poly in polys:
         lons, lats = zip(*poly.exterior.coords)
-        fig.add_scattermapbox(
+        fig.add_trace(go.Scattermapbox(
             lon=lons,
             lat=lats,
             mode='lines',
             line=dict(color='black', width=2),
             hoverinfo='skip',
             showlegend=False
-        )
+        ))
 
 # -----------------------------
 # 7) Layout
 # -----------------------------
 fig.update_layout(
     mapbox_style="carto-positron",
+    mapbox_zoom=5,
+    mapbox_center={"lat":51.0,"lon":10.0},
     height=1000,
     legend=dict(
         title="Consultants",
