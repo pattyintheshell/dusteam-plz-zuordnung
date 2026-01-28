@@ -3,6 +3,7 @@ import geopandas as gpd
 import plotly.graph_objects as go
 import requests
 from io import BytesIO
+from shapely.ops import unary_union
 
 # -----------------------------
 st.set_page_config(layout="wide")
@@ -42,15 +43,15 @@ plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassign
 # -----------------------------
 # Farben pro Consultant
 farbe_map = {
-    "Dustin": "rgba(31,119,180,0.4)",     # Blau
-    "Patricia": "rgba(255,127,14,0.4)",   # Orange
-    "Jonathan": "rgba(44,160,44,0.4)",    # Grün
-    "Tobias": "rgba(214,39,40,0.4)",      # Rot
-    "Kathrin": "rgba(148,103,189,0.4)",   # Lila
-    "Sumak": "rgba(255,152,150,0.4)",     # Pink
-    "Vanessa": "rgba(255,187,120,0.4)",   # Hellorange
-    "Sebastian": "rgba(23,190,207,0.4)",  # Cyan
-    "Philipp": "rgba(127,127,0,0.4)",     # Gelb/Olive
+    "Dustin": "rgba(31,119,180,0.5)",     # Blau
+    "Patricia": "rgba(255,127,14,0.5)",   # Orange
+    "Jonathan": "rgba(44,160,44,0.5)",    # Grün
+    "Tobias": "rgba(214,39,40,0.5)",      # Rot
+    "Kathrin": "rgba(148,103,189,0.5)",   # Lila
+    "Sumak": "rgba(255,152,150,0.5)",     # Pink
+    "Vanessa": "rgba(255,187,120,0.5)",   # Hellorange
+    "Sebastian": "rgba(23,190,207,0.5)",  # Cyan
+    "Philipp": "rgba(127,127,0,0.5)",     # Gelb/Olive
     "Unassigned": "rgba(200,200,200,0.3)" # Grau nur für Unassigned
 }
 
@@ -67,81 +68,91 @@ plz_with_bl['hover_text'] = plz_with_bl.apply(
 )
 
 # -----------------------------
-# Streamlit Spalten
-col1, col2 = st.columns([3,1])
+# Karte
+fig = go.Figure()
 
-with col1:
-    fig = go.Figure()
+# EIN Trace pro Consultant mit zusammengefassten Polygonen
+for consultant, group in plz_with_bl.groupby("consultant"):
+    if group.empty:
+        continue
 
-    # EIN Trace pro Consultant (alle 2er-PLZ zusammen)
-    for consultant, group in plz_with_bl.groupby("consultant"):
-        all_lons = []
-        all_lats = []
-        all_text = []
+    # Alle Geometrien zusammenführen
+    merged_geom = unary_union(group.geometry)
 
-        for geom, hover in zip(group.geometry, group.hover_text):
-            if geom.geom_type == "Polygon":
-                polys = [geom]
-            elif geom.geom_type == "MultiPolygon":
-                polys = list(geom.geoms)
-            else:
-                continue
+    # MultiPolygon oder Polygon behandeln
+    if merged_geom.geom_type == "Polygon":
+        polygons = [merged_geom]
+    elif merged_geom.geom_type == "MultiPolygon":
+        polygons = list(merged_geom.geoms)
+    else:
+        continue
 
-            for poly in polys:
-                lons, lats = zip(*poly.exterior.coords)
-                all_lons.extend(lons + (None,))
-                all_lats.extend(lats + (None,))
-                all_text.extend([hover]*len(lons) + [None])
+    all_lons = []
+    all_lats = []
+    all_text = []
 
+    for poly in polygons:
+        lons, lats = zip(*poly.exterior.coords)
+        all_lons.extend(lons + (None,))
+        all_lats.extend(lats + (None,))
+
+    # Hover-Text für alle 2er-PLZ des Consultants
+    hover_texts = "<br>".join(group['hover_text'].tolist())
+    all_text = [hover_texts]*len(all_lons)
+
+    fig.add_trace(go.Scattermapbox(
+        lon=all_lons,
+        lat=all_lats,
+        mode="lines",
+        fill="toself",
+        fillcolor=farbe_map[consultant],
+        line=dict(color="black", width=1),
+        hoverinfo="text",
+        text=all_text,
+        name=consultant,
+        showlegend=True,
+        legendgroup=consultant
+    ))
+
+# -----------------------------
+# Bundesländer Umrisse
+for geom in bl_gdf.geometry:
+    if geom.geom_type == "Polygon":
+        lons, lats = zip(*geom.exterior.coords)
         fig.add_trace(go.Scattermapbox(
-            lon=all_lons,
-            lat=all_lats,
+            lon=list(lons), lat=list(lats),
             mode="lines",
-            fill="toself",
-            fillcolor=farbe_map[consultant],
-            line=dict(color="black", width=1),
-            hoverinfo="text",
-            text=all_text,
-            name=consultant,
-            showlegend=True,        # nur einmal pro Consultant
-            legendgroup=consultant
+            line=dict(color="black", width=2),
+            hoverinfo="skip",
+            showlegend=False
         ))
-
-    # Bundesländer Linien
-    for geom in bl_gdf.geometry:
-        if geom.geom_type == "Polygon":
-            lons, lats = zip(*geom.exterior.coords)
+    elif geom.geom_type == "MultiPolygon":
+        for poly in geom.geoms:
+            lons, lats = zip(*poly.exterior.coords)
             fig.add_trace(go.Scattermapbox(
-                lon=list(lons), lat=list(lats), mode="lines",
+                lon=list(lons), lat=list(lats),
+                mode="lines",
                 line=dict(color="black", width=2),
                 hoverinfo="skip",
                 showlegend=False
             ))
-        elif geom.geom_type == "MultiPolygon":
-            for poly in geom.geoms:
-                lons, lats = zip(*poly.exterior.coords)
-                fig.add_trace(go.Scattermapbox(
-                    lon=list(lons), lat=list(lats), mode="lines",
-                    line=dict(color="black", width=2),
-                    hoverinfo="skip",
-                    showlegend=False
-                ))
 
-    fig.update_layout(
-        mapbox_style="carto-positron",
-        mapbox_zoom=5,
-        mapbox_center={"lat":51,"lon":10},
-        height=800,
-        width=800
+# -----------------------------
+fig.update_layout(
+    mapbox_style="carto-positron",
+    mapbox_zoom=5,
+    mapbox_center={"lat":51,"lon":10},
+    height=800,
+    width=800,
+    legend=dict(
+        title="Consultants",
+        title_font=dict(size=16),
+        font=dict(size=14),
+        x=0.99,
+        y=0.99,
+        xanchor="right",
+        yanchor="top"
     )
+)
 
-    st.plotly_chart(fig, use_container_width=False)
-
-with col2:
-    st.subheader("Consultants")
-    for consultant, color in farbe_map.items():
-        if consultant != "Unassigned":
-            st.markdown(
-                f"<span style='display:inline-block;width:20px;height:20px;background-color:{color};margin-right:5px;'></span>{consultant}",
-                unsafe_allow_html=True
-            )
+st.plotly_chart(fig, use_container_width=False)
