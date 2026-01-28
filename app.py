@@ -6,7 +6,7 @@ from io import BytesIO
 from shapely.geometry import Polygon, MultiPolygon
 
 st.set_page_config(layout="wide")
-st.title("🗺️ Marktaufteilung Dusteam")
+st.title("🗺️ Marktaufteilung DE Perm Embedded")
 
 # -----------------------------
 # 1) GeoJSON laden
