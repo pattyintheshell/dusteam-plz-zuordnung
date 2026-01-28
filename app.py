@@ -47,18 +47,18 @@ plz_gdf['hover_text'] = plz_gdf.apply(
 )
 
 # -----------------------------
-# Farben pro Consultant (nur #RRGGBB, Transparenz über opacity)
+# Farben pro Consultant (klar & transparent)
 farbe_map = {
-    "Dustin": "#1f77b4",     
-    "Patricia": "#ff7f14",   
-    "Jonathan": "#2ca03c",   
-    "Tobias": "#d62740",     
-    "Kathrin": "#9467bd",    
-    "Sumak": "#ff9896",      
-    "Vanessa": "#ffbb78",    
-    "Sebastian": "#17becf",  
-    "Philipp": "#7f7f00",    
-    "Unassigned": "#c8c8c8"
+    "Dustin": "#FFD700",       # Gelb
+    "Patricia": "#FF0000",     # Rot
+    "Jonathan": "#FF8C00",     # Orange
+    "Philipp": "#1E90FF",      # Blau
+    "Tobias": "#32CD32",       # Grün
+    "Kathrin": "#8A2BE2",      # Lila
+    "Sumak": "#00CED1",        # Cyan/Türkis
+    "Vanessa": "#FF69B4",      # Pink
+    "Sebastian": "#800080",    # Dunkles Violett
+    "Unassigned": "#C8C8C8"    # Grau
 }
 
 # -----------------------------
