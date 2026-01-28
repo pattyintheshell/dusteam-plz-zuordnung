@@ -45,19 +45,27 @@ plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_l
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# 3) Farben pro Consultant
+# 3) Farben pro Consultant (klar unterscheidbar)
 # -----------------------------
 farbe_map = {
-    "Dustin": "rgba(31,119,180,0.5)",
-    "Patricia": "rgba(70,130,180,0.5)",
-    "Jonathan": "rgba(173,216,230,0.5)",
-    "Tobias": "rgba(255,127,14,0.5)",
-    "Kathrin": "rgba(255,165,0,0.5)",
-    "Sumak": "rgba(255,200,0,0.5)",
-    "Vanessa": "rgba(214,39,40,0.5)",
-    "Sebastian": "rgba(178,34,34,0.5)",
-    "Philipp": "rgba(44,160,44,0.5)",
-    "Unassigned": "rgba(200,200,200,0.5)"
+    # Blau-Familie
+    "Dustin": "rgba(31,119,180,0.6)",
+    "Patricia": "rgba(70,130,180,0.6)",
+    "Jonathan": "rgba(100,149,237,0.6)",
+
+    # Orange-Familie
+    "Tobias": "rgba(255,127,14,0.6)",
+    "Kathrin": "rgba(255,165,0,0.6)",
+    "Sumak": "rgba(255,200,0,0.6)",
+
+    # Rot-Familie
+    "Vanessa": "rgba(214,39,40,0.6)",
+    "Sebastian": "rgba(178,34,34,0.6)",
+
+    # Grün-Familie
+    "Philipp": "rgba(44,160,44,0.6)",
+
+    "Unassigned": "rgba(200,200,200,0.6)"
 }
 
 # -----------------------------
@@ -72,7 +80,7 @@ plz_mit_bl['hover_text'] = plz_mit_bl.apply(
 )
 
 # -----------------------------
-# 5) Karte bauen
+# 5) Karte bauen (keine Legende)
 # -----------------------------
 fig = go.Figure()
 
@@ -89,7 +97,8 @@ for idx, row in plz_mit_bl.iterrows():
             fillcolor=farbe_map[row['consultant']],
             line=dict(color='black', width=1),
             hoverinfo='text',
-            text=[row['hover_text']]*len(lons)
+            text=[row['hover_text']]*len(lons),
+            showlegend=False  # Legende komplett aus
         ))
 
 # Bundesländer als Linien
@@ -103,7 +112,8 @@ for _, row in bl_gdf.iterrows():
             lat=lats,
             mode='lines',
             line=dict(color='black', width=2),
-            hoverinfo='skip'
+            hoverinfo='skip',
+            showlegend=False
         ))
 
 # Layout
@@ -115,11 +125,3 @@ fig.update_layout(
 )
 
 st.plotly_chart(fig, use_container_width=True)
-
-# -----------------------------
-# 6) Legende manuell in Streamlit
-# -----------------------------
-st.markdown("### Consultants")
-cols = st.columns(len(farbe_map))
-for i, (consultant, farbe) in enumerate(farbe_map.items()):
-    cols[i].markdown(f"<div style='background:{farbe};padding:10px;text-align:center;border-radius:5px'>{consultant}</div>", unsafe_allow_html=True)
