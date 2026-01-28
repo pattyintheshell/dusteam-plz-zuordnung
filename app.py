@@ -23,6 +23,11 @@ plz_gdf = load_geojson(PLZ_URL)
 bl_gdf  = load_geojson(BL_URL)
 plz_gdf['plz2'] = plz_gdf['plz'].astype(str).str[:2]
 
+st.write("Spalten in plz_gdf:")
+st.write(plz_gdf.columns)  # zeigt alle Spaltennamen
+st.write("Erste Zeilen:")
+st.write(plz_gdf.head())    # zeigt dir die ersten paar Einträge inkl. Daten
+
 # -----------------------------
 # Consultant Mapping
 plz_mapping = {
