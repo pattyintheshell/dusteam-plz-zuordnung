@@ -129,6 +129,22 @@ for geom in bl_gdf.geometry:
         ))
 
 # -----------------------------
+# PLZ2-Beschriftung hinzufügen
+plz2_gdf = plz_gdf.dissolve(by="plz2")  # alle PLZ2 zusammenfassen
+plz2_gdf["centroid"] = plz2_gdf.geometry.centroid
+
+fig.add_trace(go.Scattermapbox(
+    lon=plz2_gdf.centroid.x,
+    lat=plz2_gdf.centroid.y,
+    mode="text",
+    text=plz2_gdf.index,           # 2er-PLZ als Label
+    textposition="middle center",
+    textfont=dict(size=12, color="black"),
+    hoverinfo="skip",
+    showlegend=False
+))
+
+# -----------------------------
 # Legenden-Reihenfolge
 legend_order = sorted([c for c in farbe_map.keys() if c != "Unassigned"]) + ["Unassigned"]
 
@@ -144,7 +160,7 @@ fig.update_layout(
             font=dict(size=20, family="Arial, sans-serif", color="black")
         ),
         font=dict(size=16, color="black"),
-        bgcolor="rgba(255, 255, 255, 0.85)",   # 👈 FIX: immer weiß / leicht transparent
+        bgcolor="rgba(255, 255, 255, 0.85)",
         bordercolor="rgba(0,0,0,0.2)",
         borderwidth=1,
         tracegroupgap=10,
