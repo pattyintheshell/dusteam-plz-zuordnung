@@ -23,8 +23,9 @@ BL_URL  = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/releases/dow
 plz_gdf = load_geojson(PLZ_URL)
 bl_gdf  = load_geojson(BL_URL)
 
+# -----------------------------
 # PLZ2 extrahieren
-plz_gdf['plz2'] = plz_gdf['plz'].astype(str).str[:2]
+plz_gdf["plz2"] = plz_gdf["plz"].astype(str).str[:2]
 
 # -----------------------------
 # Consultant Mapping
@@ -39,49 +40,45 @@ plz_mapping = {
     "Sumak": ["90","91","92","93","94","95","96","97"],
     "Jonathan": ["70","72","73","89"]
 }
+
 plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_list}
-plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
+plz_gdf["consultant"] = plz_gdf["plz2"].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# Hover-Text pro PLZ (PLZ2 + Consultant)
-plz_gdf['hover_text'] = plz_gdf.apply(
+# Hover-Text
+plz_gdf["hover_text"] = plz_gdf.apply(
     lambda row: f"{row['plz2']} {row['consultant']}",
     axis=1
 )
 
 # -----------------------------
-# Farben pro Consultant (RGBA, transparent)
+# Farben (RGBA)
 farbe_map = {
-    "Dustin": "rgba(255, 223, 0, 0.4)",       # Gelb
-    "Patricia": "rgba(255, 0, 0, 0.4)",       # Rot
-    "Jonathan": "rgba(255, 102, 0, 0.4)",     # Orange
-    "Philipp": "rgba(0, 100, 255, 0.4)",      # Blau
-    "Tobias": "rgba(0, 100, 0, 0.4)",         # Dunkleres Grün
-    "Kathrin": "rgba(160, 80, 210, 0.4)",     # Lila minimal heller
-    "Sumak": "rgba(0, 206, 209, 0.4)",        # Cyan/Türkis
-    "Vanessa": "rgba(255, 102, 204, 0.4)",    # Helleres, rosa Pink
-    "Sebastian": "rgba(110, 210, 110, 0.4)",  # Hellgrün minimal dunkler
-    "Unassigned": "rgba(200, 200, 200, 0.4)"  # Grau
+    "Dustin": "rgba(255, 223, 0, 0.4)",
+    "Patricia": "rgba(255, 0, 0, 0.4)",
+    "Jonathan": "rgba(255, 102, 0, 0.4)",
+    "Philipp": "rgba(0, 100, 255, 0.4)",
+    "Tobias": "rgba(0, 100, 0, 0.4)",
+    "Kathrin": "rgba(160, 80, 210, 0.4)",
+    "Sumak": "rgba(0, 206, 209, 0.4)",
+    "Vanessa": "rgba(255, 102, 204, 0.4)",
+    "Sebastian": "rgba(110, 210, 110, 0.4)",
+    "Unassigned": "rgba(200, 200, 200, 0.4)"
 }
 
 # -----------------------------
-# Karte bauen: EIN Trace pro Consultant
+# Karte bauen
 fig = go.Figure()
 
-# Flächen-Trace für PLZ-Gebiete (NumPy-Optimierung)
 for consultant, color in farbe_map.items():
-    subset = plz_gdf[plz_gdf['consultant'] == consultant]
+    subset = plz_gdf[plz_gdf["consultant"] == consultant]
     if subset.empty:
         continue
 
     lon_arrays, lat_arrays, text_arrays = [], [], []
-    for geom, hover in zip(subset.geometry, subset['hover_text']):
-        if geom.geom_type == "Polygon":
-            polys = [geom]
-        elif geom.geom_type == "MultiPolygon":
-            polys = geom.geoms
-        else:
-            continue
+
+    for geom, hover in zip(subset.geometry, subset["hover_text"]):
+        polys = [geom] if geom.geom_type == "Polygon" else geom.geoms
 
         for poly in polys:
             lons, lats = zip(*poly.exterior.coords)
@@ -89,77 +86,83 @@ for consultant, color in farbe_map.items():
             lat_arrays.append(np.concatenate([np.array(lats), [np.nan]]))
             text_arrays.append(np.concatenate([np.array([hover]*len(lons)), [np.nan]]))
 
-    lon_list = np.concatenate(lon_arrays).tolist()
-    lat_list = np.concatenate(lat_arrays).tolist()
-    text_list = np.concatenate(text_arrays).tolist()
-
     fig.add_trace(go.Scattermapbox(
-        lon=lon_list,
-        lat=lat_list,
-        mode='lines',
-        fill='toself',
+        lon=np.concatenate(lon_arrays).tolist(),
+        lat=np.concatenate(lat_arrays).tolist(),
+        mode="lines",
+        fill="toself",
         fillcolor=color,
-        line=dict(color='black', width=1),  # PLZ-Linien
-        text=text_list,
-        hoverinfo='text',
+        line=dict(color="black", width=1),
+        text=np.concatenate(text_arrays).tolist(),
+        hoverinfo="text",
         name=consultant,
         showlegend=False
     ))
 
-# Dummy-Traces für Legende (größere Marker)
+# -----------------------------
+# Dummy-Traces für Legende
 for consultant, color in farbe_map.items():
     fig.add_trace(go.Scattermapbox(
-        lon=[None], lat=[None],
-        mode='markers',
+        lon=[None],
+        lat=[None],
+        mode="markers",
         marker=dict(size=20, color=color),
         name=consultant,
         showlegend=True
     ))
 
 # -----------------------------
-# Bundesländer-Linien
+# Bundesländer-Grenzen
 bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
+
 for geom in bl_gdf.geometry:
-    polys = [geom] if geom.geom_type=='Polygon' else geom.geoms
+    polys = [geom] if geom.geom_type == "Polygon" else geom.geoms
     for poly in polys:
         lons, lats = zip(*poly.exterior.coords)
         fig.add_trace(go.Scattermapbox(
             lon=lons,
             lat=lats,
-            mode='lines',
-            line=dict(color='black', width=2),  # Bundesländer-Linien
-            hoverinfo='skip',
+            mode="lines",
+            line=dict(color="black", width=2),
+            hoverinfo="skip",
             showlegend=False
         ))
 
 # -----------------------------
-# Layout: alphabetische Legende, Unassigned am Ende
+# Legenden-Reihenfolge
 legend_order = sorted([c for c in farbe_map.keys() if c != "Unassigned"]) + ["Unassigned"]
 
 fig.update_layout(
     mapbox_style="carto-positron",
     mapbox_zoom=5,
-    mapbox_center={"lat":51.0,"lon":10.0},
+    mapbox_center={"lat": 51.0, "lon": 10.0},
     height=800,
     width=800,
     legend=dict(
-        title=dict(text="Consultants", font=dict(size=20, family="Arial, sans-serif", color="black")),
-        font=dict(size=16),
-        tracegroupgap=10,  # Abstand Titel -> erstes Element
+        title=dict(
+            text="Consultants",
+            font=dict(size=20, family="Arial, sans-serif", color="black")
+        ),
+        font=dict(size=16, color="black"),
+        bgcolor="rgba(255, 255, 255, 0.85)",   # 👈 FIX: immer weiß / leicht transparent
+        bordercolor="rgba(0,0,0,0.2)",
+        borderwidth=1,
+        tracegroupgap=10,
         x=0.99,
         y=0.99,
         xanchor="right",
         yanchor="top",
-        traceorder='normal'
+        traceorder="normal"
     )
 )
 
-# Sortiere Dummy-Traces für die Legende
+# Sortierung der Legendeneinträge
 new_order = []
 for name in legend_order:
     for trace in fig.data:
         if trace.name == name and trace.showlegend:
             new_order.append(trace)
+
 fig.data = tuple([t for t in fig.data if not t.showlegend] + new_order)
 
 # -----------------------------
