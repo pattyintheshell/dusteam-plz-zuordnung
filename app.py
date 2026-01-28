@@ -9,9 +9,10 @@ st.set_page_config(layout="wide")
 st.title("🗺️ Marktaufteilung Dusteam")
 
 # -----------------------------
-# 1) PLZ GeoJSON laden
+# 1) PLZ GeoJSON laden aus eigenem GitHub Release
 # -----------------------------
-PLZ_URL = "https://raw.githubusercontent.com/tdudek/de-plz-geojson/master/plz-2stellig.geojson"
+PLZ_URL = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/releases/download/PLZ%20GeoJSON/plz_deutschland.geojson"
+
 r = requests.get(PLZ_URL)
 if r.status_code != 200:
     st.error(f"Fehler beim Laden der PLZ GeoJSON: {r.status_code}")
@@ -79,7 +80,7 @@ for consultant in categories:
         text=texts_all,
         name=consultant,
         showlegend=True,
-        legendgroup=consultant   # verhindert doppelte Legende auch auf Mobil
+        legendgroup=consultant
     ))
 
 # -----------------------------
