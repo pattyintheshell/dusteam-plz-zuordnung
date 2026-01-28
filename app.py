@@ -39,35 +39,41 @@ plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_l
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# -----------------------------
-# Starke, deutlich unterscheidbare transparente Farben
+# Farben deutlich unterscheidbar, dunkler Ton innerhalb Familie, transparent
 farbe_map = {
     # Blau-Familie
-    "Dustin": "rgba(31,119,180,0.4)",
-    "Patricia": "rgba(0,102,204,0.4)",
-    "Jonathan": "rgba(102,178,255,0.4)",
-
+    "Dustin": "rgba(31,119,180,0.4)",        # mittelblau
+    "Patricia": "rgba(0,102,204,0.4)",       # dunkler
+    "Jonathan": "rgba(102,178,255,0.4)",     # heller
+    
     # Grün-Familie (war Orange)
-    "Tobias": "rgba(44,160,44,0.4)",
-    "Kathrin": "rgba(102,204,102,0.4)",
-    "Sumak": "rgba(170,255,170,0.4)",
-
-    # Lila/Pink-Familie (statt Rot)
-    "Vanessa": "rgba(148,0,211,0.4)",
-    "Sebastian": "rgba(255,20,147,0.4)",
-
+    "Tobias": "rgba(44,160,44,0.4)",         # mittelgrün
+    "Kathrin": "rgba(0,128,0,0.4)",          # dunkler
+    "Sumak": "rgba(144,238,144,0.4)",        # heller
+    
+    # Lila/Pink-Familie (Vanessa Pink, Sebastian Lila)
+    "Vanessa": "rgba(255,20,147,0.4)",       # Pink
+    "Sebastian": "rgba(148,0,211,0.4)",      # Lila
+    
     # Orange-Familie (war Grün)
-    "Philipp": "rgba(255,127,14,0.4)",
-
+    "Philipp": "rgba(255,127,14,0.4)",       # Orange
+    
     "Unassigned": "rgba(200,200,200,0.4)"
 }
 
 # -----------------------------
-# Hover-Text: PLZ, Bundesland, Consultant untereinander
-# plz_with_bl: wir joinen noch die Bundesländer
+# Bundesländer joinen
 bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
 plz_with_bl = gpd.sjoin(plz_gdf, bl_gdf[['name','geometry']], how='left', predicate='intersects')
 plz_with_bl = plz_with_bl.reset_index(drop=True)
+
+# -----------------------------
+# Performance-Optimierung: Polygone vereinfachen
+plz_with_bl['geometry'] = plz_with_bl['geometry'].simplify(tolerance=0.01, preserve_topology=True)
+bl_gdf['geometry'] = bl_gdf['geometry'].simplify(tolerance=0.01, preserve_topology=True)
+
+# -----------------------------
+# Hover-Text untereinander: PLZ, Bundesland, Consultant
 plz_with_bl['hover_text'] = plz_with_bl.apply(
     lambda row: f"{row['plz2']}<br>{row['name'] if row['name'] else 'Unbekannt'}<br>{row['consultant']}",
     axis=1
