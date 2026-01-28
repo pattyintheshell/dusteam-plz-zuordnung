@@ -3,7 +3,6 @@ import geopandas as gpd
 import plotly.graph_objects as go
 import requests
 from io import BytesIO
-from shapely.ops import unary_union
 
 # -----------------------------
 st.set_page_config(layout="wide")
@@ -61,44 +60,35 @@ bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
 plz_with_bl = gpd.sjoin(plz_gdf, bl_gdf[['name','geometry']], how='left', predicate='intersects')
 plz_with_bl = plz_with_bl.reset_index(drop=True)
 
-# Hover-Text untereinander
+# Hover-Text pro 2er-PLZ (Zeile für Zeile)
 plz_with_bl['hover_text'] = plz_with_bl.apply(
-    lambda row: f"{row['plz2']}<br>{row['name'] if row['name'] else 'Unbekannt'}<br>{row['consultant']}",
+    lambda row: f"{row['plz2']}\n{row['name'] if row['name'] else 'Unbekannt'}\n{row['consultant']}",
     axis=1
 )
 
 # -----------------------------
-# Karte
+# Karte bauen
 fig = go.Figure()
 
-# EIN Trace pro Consultant mit zusammengefassten Polygonen
 for consultant, group in plz_with_bl.groupby("consultant"):
-    if group.empty:
-        continue
-
-    # Alle Geometrien zusammenführen
-    merged_geom = unary_union(group.geometry)
-
-    # MultiPolygon oder Polygon behandeln
-    if merged_geom.geom_type == "Polygon":
-        polygons = [merged_geom]
-    elif merged_geom.geom_type == "MultiPolygon":
-        polygons = list(merged_geom.geoms)
-    else:
-        continue
-
     all_lons = []
     all_lats = []
     all_text = []
 
-    for poly in polygons:
-        lons, lats = zip(*poly.exterior.coords)
-        all_lons.extend(lons + (None,))
-        all_lats.extend(lats + (None,))
+    # Jede 2er-PLZ einzeln, aber Farbe pro Consultant
+    for geom, hover in zip(group.geometry, group['hover_text']):
+        if geom.geom_type == "Polygon":
+            polys = [geom]
+        elif geom.geom_type == "MultiPolygon":
+            polys = list(geom.geoms)
+        else:
+            continue
 
-    # Hover-Text für alle 2er-PLZ des Consultants
-    hover_texts = "<br>".join(group['hover_text'].tolist())
-    all_text = [hover_texts]*len(all_lons)
+        for poly in polys:
+            lons, lats = zip(*poly.exterior.coords)
+            all_lons.extend(lons + (None,))
+            all_lats.extend(lats + (None,))
+            all_text.extend([hover]*len(lons) + [None])
 
     fig.add_trace(go.Scattermapbox(
         lon=all_lons,
@@ -115,7 +105,7 @@ for consultant, group in plz_with_bl.groupby("consultant"):
     ))
 
 # -----------------------------
-# Bundesländer Umrisse
+# Bundesländer Linien
 for geom in bl_gdf.geometry:
     if geom.geom_type == "Polygon":
         lons, lats = zip(*geom.exterior.coords)
@@ -138,6 +128,7 @@ for geom in bl_gdf.geometry:
             ))
 
 # -----------------------------
+# Layout
 fig.update_layout(
     mapbox_style="carto-positron",
     mapbox_zoom=5,
