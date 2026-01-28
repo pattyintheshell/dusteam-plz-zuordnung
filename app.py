@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 import requests
 from io import BytesIO
 
+# -----------------------------
 st.set_page_config(layout="wide")
 st.title("🗺️ Marktaufteilung DE Perm Embedded Team")
 
@@ -23,7 +24,7 @@ bl_gdf  = load_geojson(BL_URL)
 plz_gdf['plz2'] = plz_gdf['plz'].astype(str).str[:2]
 
 # -----------------------------
-# Consultant-Zuordnung
+# Consultant Mapping
 plz_mapping = {
     "Dustin": ["77","78","79","88"],
     "Tobias": ["81","82","83","84"],
@@ -39,7 +40,7 @@ plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_l
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# Farben pro Consultant, transparent
+# Farben pro Consultant
 farbe_map = {
     "Dustin": "rgba(31,119,180,0.4)",     # Blau
     "Patricia": "rgba(255,127,14,0.4)",   # Orange
@@ -72,7 +73,7 @@ col1, col2 = st.columns([3,1])
 with col1:
     fig = go.Figure()
 
-    # 1 Trace pro Consultant, alle Polygone zusammen
+    # EIN Trace pro Consultant (alle 2er-PLZ zusammen)
     for consultant, group in plz_with_bl.groupby("consultant"):
         all_lons = []
         all_lats = []
@@ -102,7 +103,7 @@ with col1:
             hoverinfo="text",
             text=all_text,
             name=consultant,
-            showlegend=True,
+            showlegend=True,        # nur einmal pro Consultant
             legendgroup=consultant
         ))
 
