@@ -49,15 +49,15 @@ plz_gdf['hover_text'] = plz_gdf.apply(
 # -----------------------------
 # Farben pro Consultant (RGBA, transparent)
 farbe_map = {
-    "Dustin": "rgba(255, 223, 0, 0.4)",    # Kräftiges Gelb
+    "Dustin": "rgba(255, 223, 0, 0.4)",    # Gelb
     "Patricia": "rgba(255, 0, 0, 0.4)",     # Rot
     "Jonathan": "rgba(255, 102, 0, 0.4)",   # Dunkleres Orange
     "Philipp": "rgba(30, 144, 255, 0.4)",   # Blau
     "Tobias": "rgba(34, 139, 34, 0.4)",     # Dunkleres Grün
-    "Kathrin": "rgba(186, 85, 211, 0.4)",   # Helleres Lila
+    "Kathrin": "rgba(186, 85, 211, 0.4)",   # Helles Lila
     "Sumak": "rgba(0, 206, 209, 0.4)",      # Cyan/Türkis
     "Vanessa": "rgba(255, 20, 147, 0.4)",   # Kräftiges Pink
-    "Sebastian": "rgba(102, 0, 204, 0.4)",  # Dunkleres Violett
+    "Sebastian": "rgba(199, 21, 133, 0.4)", # Magenta / Pink-Violett
     "Unassigned": "rgba(200, 200, 200, 0.4)"# Grau
 }
 
@@ -125,7 +125,9 @@ for geom in bl_gdf.geometry:
         ))
 
 # -----------------------------
-# Layout
+# Layout: alphabetische Legende, Unassigned am Ende
+legend_order = sorted([c for c in farbe_map.keys() if c != "Unassigned"]) + ["Unassigned"]
+
 fig.update_layout(
     mapbox_style="carto-positron",
     mapbox_zoom=5,
@@ -137,8 +139,18 @@ fig.update_layout(
         x=0.99,
         y=0.99,
         xanchor="right",
-        yanchor="top"
+        yanchor="top",
+        traceorder='normal'
     )
 )
 
+# Sortiere die Dummy-Traces für die Legende
+new_order = []
+for name in legend_order:
+    for trace in fig.data:
+        if trace.name == name and trace.showlegend:
+            new_order.append(trace)
+fig.data = tuple([t for t in fig.data if not t.showlegend] + new_order)
+
+# -----------------------------
 st.plotly_chart(fig, use_container_width=False)
