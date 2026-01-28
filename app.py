@@ -47,17 +47,17 @@ plz_gdf['hover_text'] = plz_gdf.apply(
 )
 
 # -----------------------------
-# Farben pro Consultant (klar & transparent)
+# Farben pro Consultant (klar & transparent via opacity)
 farbe_map = {
     "Dustin": "#FFD700",       # Gelb
     "Patricia": "#FF0000",     # Rot
     "Jonathan": "#FF8C00",     # Orange
     "Philipp": "#1E90FF",      # Blau
     "Tobias": "#32CD32",       # Grün
-    "Kathrin": "#8A2BE2",      # Lila
+    "Kathrin": "#A64ACF",      # Helleres Lila
     "Sumak": "#00CED1",        # Cyan/Türkis
     "Vanessa": "#FF69B4",      # Pink
-    "Sebastian": "#800080",    # Dunkles Violett
+    "Sebastian": "#9932CC",    # Helleres Violett
     "Unassigned": "#C8C8C8"    # Grau
 }
 
@@ -65,12 +65,12 @@ farbe_map = {
 # Karte bauen: EIN Trace pro Consultant
 fig = go.Figure()
 
+# Flächen-Trace
 for consultant, color in farbe_map.items():
     subset = plz_gdf[plz_gdf['consultant'] == consultant]
     if subset.empty:
         continue
 
-    # Alle Polygone sammeln
     lon_list, lat_list, text_list = [], [], []
     for geom, hover in zip(subset.geometry, subset['hover_text']):
         if geom.geom_type == "Polygon":
@@ -85,7 +85,6 @@ for consultant, color in farbe_map.items():
             lat_list.extend(lats + (None,))
             text_list.extend([hover]*len(lons) + [None])
 
-    # Trace pro Consultant
     fig.add_trace(go.Scattermapbox(
         lon=lon_list,
         lat=lat_list,
@@ -96,9 +95,18 @@ for consultant, color in farbe_map.items():
         text=text_list,
         hoverinfo='text',
         name=consultant,
-        showlegend=True,
-        legendgroup=consultant,
-        opacity=0.5
+        showlegend=False,
+        opacity=0.4
+    ))
+
+# Dummy-Traces für Legende
+for consultant, color in farbe_map.items():
+    fig.add_trace(go.Scattermapbox(
+        lon=[None], lat=[None],
+        mode='markers',
+        marker=dict(size=10, color=color),
+        name=consultant,
+        showlegend=True
     ))
 
 # -----------------------------
