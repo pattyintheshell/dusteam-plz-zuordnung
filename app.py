@@ -52,12 +52,12 @@ farbe_map = {
     "Dustin": "rgba(255, 223, 0, 0.4)",       # Gelb
     "Patricia": "rgba(255, 0, 0, 0.4)",       # Rot
     "Jonathan": "rgba(255, 102, 0, 0.4)",     # Orange
-    "Philipp": "rgba(0, 100, 255, 0.4)",      # Dunkelblau
-    "Tobias": "rgba(0, 100, 0, 0.4)",         # Dunkelgrün
-    "Kathrin": "rgba(130, 50, 190, 0.4)",     # Lila
-    "Sumak": "rgba(0, 206, 209, 0.4)",        # Hellblau
-    "Vanessa": "rgba(255, 102, 204, 0.4)",    # Pink
-    "Sebastian": "rgba(110, 210, 110, 0.4)",  # Hellgrün
+    "Philipp": "rgba(0, 100, 255, 0.4)",      # Dunkleres Blau
+    "Tobias": "rgba(0, 100, 0, 0.4)",         # Dunkleres Grün
+    "Kathrin": "rgba(130, 50, 190, 0.4)",     # Minimal heller, satter Lila
+    "Sumak": "rgba(0, 206, 209, 0.4)",        # Cyan/Türkis
+    "Vanessa": "rgba(255, 102, 204, 0.4)",    # Helleres, rosa Pink
+    "Sebastian": "rgba(110, 210, 110, 0.4)",  # Hellgrün minimal dunkler
     "Unassigned": "rgba(200, 200, 200, 0.4)"  # Grau
 }
 
@@ -98,12 +98,12 @@ for consultant, color in farbe_map.items():
         showlegend=False
     ))
 
-# Dummy-Traces für Legende (exakte Farbe, größere Marker)
+# Dummy-Traces für Legende (größere Marker)
 for consultant, color in farbe_map.items():
     fig.add_trace(go.Scattermapbox(
         lon=[None], lat=[None],
         mode='markers',
-        marker=dict(size=14, color=color),
+        marker=dict(size=20, color=color),  # größere Kreise
         name=consultant,
         showlegend=True
     ))
@@ -125,7 +125,7 @@ for geom in bl_gdf.geometry:
         ))
 
 # -----------------------------
-# Layout: alphabetische Legende, Unassigned am Ende
+# Layout: alphabetische Legende, Unassigned am Ende, Titel fett
 legend_order = sorted([c for c in farbe_map.keys() if c != "Unassigned"]) + ["Unassigned"]
 
 fig.update_layout(
@@ -135,9 +135,8 @@ fig.update_layout(
     height=800,
     width=800,
     legend=dict(
-        title="Consultants",
-        title_font=dict(size=20),   # größere Titel
-        font=dict(size=16),         # größere Schrift
+        title=dict(text="Consultants", font=dict(size=20, family="Arial, sans-serif", color="black")),  # fett
+        font=dict(size=16),
         x=0.99,
         y=0.99,
         xanchor="right",
