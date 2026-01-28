@@ -39,22 +39,22 @@ plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_l
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# Stark unterscheidbare Farben (transparent)
+# Einheitliche, stark unterscheidbare Farben pro Consultant
 farbe_map = {
-    "Dustin": "rgba(0,102,204,0.4)",      # kräftiges Blau
-    "Patricia": "rgba(0,51,102,0.4)",     # dunkleres Blau
-    "Jonathan": "rgba(102,178,255,0.4)",  # helles Blau
+    "Dustin": "rgba(0,102,204,0.4)",      
+    "Patricia": "rgba(0,51,102,0.4)",     
+    "Jonathan": "rgba(102,178,255,0.4)",  
 
-    "Tobias": "rgba(0,153,0,0.4)",        # sattes Grün
-    "Kathrin": "rgba(51,204,51,0.4)",     # helles Grün
-    "Sumak": "rgba(0,102,0,0.4)",         # dunkleres Grün
+    "Tobias": "rgba(0,153,0,0.4)",        
+    "Kathrin": "rgba(51,204,51,0.4)",     
+    "Sumak": "rgba(0,102,0,0.4)",         
 
-    "Vanessa": "rgba(255,20,147,0.4)",    # Pink
-    "Sebastian": "rgba(148,0,211,0.4)",   # Lila
+    "Vanessa": "rgba(255,20,147,0.4)",    
+    "Sebastian": "rgba(148,0,211,0.4)",   
 
-    "Philipp": "rgba(255,127,14,0.4)",    # kräftiges Orange
+    "Philipp": "rgba(255,127,14,0.4)",    
 
-    "Unassigned": "rgba(200,200,200,0.4)" # Grau
+    "Unassigned": "rgba(200,200,200,0.4)"
 }
 
 # -----------------------------
@@ -64,7 +64,7 @@ plz_with_bl = gpd.sjoin(plz_gdf, bl_gdf[['name','geometry']], how='left', predic
 plz_with_bl = plz_with_bl.reset_index(drop=True)
 
 # -----------------------------
-# Polygon-Vereinfachung für Performance
+# Polygonvereinfachung für Performance
 plz_with_bl['geometry'] = plz_with_bl['geometry'].simplify(tolerance=0.05, preserve_topology=True)
 bl_gdf['geometry'] = bl_gdf['geometry'].simplify(tolerance=0.05, preserve_topology=True)
 
@@ -76,15 +76,37 @@ plz_with_bl['hover_text'] = plz_with_bl.apply(
 )
 
 # -----------------------------
-fig = go.Figure()
+# Layout: Streamlit Spalten, Karte links, Legende rechts
+col1, col2 = st.columns([3,1])
 
-# 2er-PLZ Gebiete zeichnen
-for consultant in plz_with_bl['consultant'].unique():
-    subset = plz_with_bl[plz_with_bl['consultant'] == consultant]
-    if subset.empty:
-        continue
-    
-    for geom, hover in zip(subset.geometry, subset.hover_text):
+with col1:
+    fig = go.Figure()
+
+    # 2er-PLZ Gebiete zeichnen
+    for consultant in plz_with_bl['consultant'].unique():
+        subset = plz_with_bl[plz_with_bl['consultant'] == consultant]
+        if subset.empty:
+            continue
+        
+        for geom, hover in zip(subset.geometry, subset.hover_text):
+            polys = [geom] if geom.geom_type=="Polygon" else geom.geoms
+            for poly in polys:
+                lons, lats = zip(*poly.exterior.coords)
+                fig.add_trace(go.Scattermapbox(
+                    lon=lons,
+                    lat=lats,
+                    mode='lines',
+                    fill='toself',
+                    fillcolor=farbe_map[consultant],
+                    line=dict(color='black', width=1),
+                    hoverinfo='text',
+                    text=[hover]*len(lons),
+                    showlegend=False
+                ))
+
+    # Bundesländer Linien
+    for _, row in bl_gdf.iterrows():
+        geom = row.geometry
         polys = [geom] if geom.geom_type=="Polygon" else geom.geoms
         for poly in polys:
             lons, lats = zip(*poly.exterior.coords)
@@ -92,57 +114,23 @@ for consultant in plz_with_bl['consultant'].unique():
                 lon=lons,
                 lat=lats,
                 mode='lines',
-                fill='toself',
-                fillcolor=farbe_map[consultant],
-                line=dict(color='black', width=1),
-                hoverinfo='text',
-                text=[hover]*len(lons),
+                line=dict(color='black', width=2),
+                hoverinfo='skip',
                 showlegend=False
             ))
 
-# -----------------------------
-# Unsichtbare Traces nur für Legende
-for consultant, color in farbe_map.items():
-    fig.add_trace(go.Scattermapbox(
-        lon=[None], lat=[None],
-        mode='markers',
-        marker=dict(size=10, color=color),
-        name=consultant,
-        showlegend=True
-    ))
-
-# -----------------------------
-# Bundesländer Linien
-for _, row in bl_gdf.iterrows():
-    geom = row.geometry
-    polys = [geom] if geom.geom_type=="Polygon" else geom.geoms
-    for poly in polys:
-        lons, lats = zip(*poly.exterior.coords)
-        fig.add_trace(go.Scattermapbox(
-            lon=lons,
-            lat=lats,
-            mode='lines',
-            line=dict(color='black', width=2),
-            hoverinfo='skip',
-            showlegend=False
-        ))
-
-# -----------------------------
-fig.update_layout(
-    mapbox_style="carto-positron",
-    mapbox_zoom=5,
-    mapbox_center={"lat": 51.0, "lon": 10.0},
-    height=1000,
-    legend=dict(
-        title="Consultants",
-        yanchor="top",
-        y=0.99,
-        xanchor="right",
-        x=0.99,
-        bgcolor="white",
-        bordercolor="black",
-        borderwidth=1
+    fig.update_layout(
+        mapbox_style="carto-positron",
+        mapbox_zoom=5,
+        mapbox_center={"lat": 51.0, "lon": 10.0},
+        height=800,
+        width=800
     )
-)
 
-st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=False)
+
+with col2:
+    st.subheader("Consultants")
+    for consultant, color in farbe_map.items():
+        if consultant != "Unassigned":
+            st.markdown(f"<span style='display:inline-block;width:20px;height:20px;background-color:{color};margin-right:5px;'></span>{consultant}", unsafe_allow_html=True)
