@@ -54,7 +54,7 @@ farbe_map = {
     "Jonathan": "rgba(255, 102, 0, 0.4)",     # Orange
     "Philipp": "rgba(0, 100, 255, 0.4)",      # Dunkleres Blau
     "Tobias": "rgba(0, 100, 0, 0.4)",         # Dunkleres Grün
-    "Kathrin": "rgba(130, 50, 190, 0.4)",     # Minimal heller Lila
+    "Kathrin": "rgba(150, 70, 200, 0.4)",     # Lila minimal heller
     "Sumak": "rgba(0, 206, 209, 0.4)",        # Cyan/Türkis
     "Vanessa": "rgba(255, 102, 204, 0.4)",    # Helleres, rosa Pink
     "Sebastian": "rgba(110, 210, 110, 0.4)",  # Hellgrün minimal dunkler
@@ -65,7 +65,7 @@ farbe_map = {
 # Karte bauen: EIN Trace pro Consultant
 fig = go.Figure()
 
-# Flächen-Trace
+# Flächen-Trace für PLZ-Gebiete
 for consultant, color in farbe_map.items():
     subset = plz_gdf[plz_gdf['consultant'] == consultant]
     if subset.empty:
@@ -91,7 +91,7 @@ for consultant, color in farbe_map.items():
         mode='lines',
         fill='toself',
         fillcolor=color,
-        line=dict(color='black', width=1),
+        line=dict(color='black', width=1),  # PLZ-Linien etwas dünner
         text=text_list,
         hoverinfo='text',
         name=consultant,
@@ -109,7 +109,7 @@ for consultant, color in farbe_map.items():
     ))
 
 # -----------------------------
-# Bundesländer Umrisse dicker zeichnen
+# Bundesländer-Linien etwas dünner
 bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
 for geom in bl_gdf.geometry:
     polys = [geom] if geom.geom_type=='Polygon' else geom.geoms
@@ -119,13 +119,13 @@ for geom in bl_gdf.geometry:
             lon=lons,
             lat=lats,
             mode='lines',
-            line=dict(color='black', width=3),  # dicker
+            line=dict(color='black', width=2),  # Bundesländer-Linien dünner
             hoverinfo='skip',
             showlegend=False
         ))
 
 # -----------------------------
-# Layout: alphabetische Legende, Unassigned am Ende, Abstand zwischen Titel und erstem Element
+# Layout: alphabetische Legende, Unassigned am Ende, Abstand Titel -> erstes Element
 legend_order = sorted([c for c in farbe_map.keys() if c != "Unassigned"]) + ["Unassigned"]
 
 fig.update_layout(
@@ -137,7 +137,7 @@ fig.update_layout(
     legend=dict(
         title=dict(text="Consultants", font=dict(size=20, family="Arial, sans-serif", color="black")),
         font=dict(size=16),
-        tracegroupgap=10,  # Abstand zwischen Titel und erstem Eintrag
+        tracegroupgap=10,  # Abstand zwischen Titel und erstem Legenden-Eintrag
         x=0.99,
         y=0.99,
         xanchor="right",
@@ -146,7 +146,7 @@ fig.update_layout(
     )
 )
 
-# Sortiere die Dummy-Traces für die Legende
+# Sortiere Dummy-Traces für die Legende
 new_order = []
 for name in legend_order:
     for trace in fig.data:
