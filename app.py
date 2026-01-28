@@ -3,10 +3,11 @@ import geopandas as gpd
 import plotly.graph_objects as go
 import requests
 from io import BytesIO
+import numpy as np
 
 # -----------------------------
 st.set_page_config(layout="wide")
-st.title("Marktaufteilung: DE Perm Embedded")
+st.title("🗺️ Marktaufteilung DE Perm Embedded Team")
 
 # -----------------------------
 def load_geojson(url: str) -> gpd.GeoDataFrame:
@@ -40,7 +41,7 @@ plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_l
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# Hover-Text pro PLZ (nur PLZ2 und Consultant, sauber)
+# Hover-Text pro PLZ (PLZ2 + Consultant)
 plz_gdf['hover_text'] = plz_gdf.apply(
     lambda row: f"{row['plz2']} {row['consultant']}",
     axis=1
@@ -65,13 +66,13 @@ farbe_map = {
 # Karte bauen: EIN Trace pro Consultant
 fig = go.Figure()
 
-# Flächen-Trace für PLZ-Gebiete
+# Flächen-Trace für PLZ-Gebiete (NumPy-Optimierung)
 for consultant, color in farbe_map.items():
     subset = plz_gdf[plz_gdf['consultant'] == consultant]
     if subset.empty:
         continue
 
-    lon_list, lat_list, text_list = [], [], []
+    lon_arrays, lat_arrays, text_arrays = [], [], []
     for geom, hover in zip(subset.geometry, subset['hover_text']):
         if geom.geom_type == "Polygon":
             polys = [geom]
@@ -79,12 +80,16 @@ for consultant, color in farbe_map.items():
             polys = geom.geoms
         else:
             continue
+
         for poly in polys:
             lons, lats = zip(*poly.exterior.coords)
-            lon_list.extend(lons + (None,))
-            lat_list.extend(lats + (None,))
-            # Hover-Text sauber: nur gültige Werte, keine None
-            text_list.extend([hover if hover is not None else '' for _ in lons] + [None])
+            lon_arrays.append(np.concatenate([np.array(lons), [np.nan]]))
+            lat_arrays.append(np.concatenate([np.array(lats), [np.nan]]))
+            text_arrays.append(np.concatenate([np.array([hover]*len(lons)), [np.nan]]))
+
+    lon_list = np.concatenate(lon_arrays).tolist()
+    lat_list = np.concatenate(lat_arrays).tolist()
+    text_list = np.concatenate(text_arrays).tolist()
 
     fig.add_trace(go.Scattermapbox(
         lon=lon_list,
