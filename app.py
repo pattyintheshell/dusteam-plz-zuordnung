@@ -1,10 +1,8 @@
 import streamlit as st
 import geopandas as gpd
-import plotly.graph_objects as go
+import plotly.express as px
 import requests
 from io import BytesIO
-from shapely.ops import unary_union
-from shapely.geometry import Polygon, MultiPolygon
 
 # -----------------------------
 # 0) Titel
@@ -50,86 +48,45 @@ plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassign
 # 3) Farben pro Consultant
 # -----------------------------
 farbe_map = {
-    "Dustin": "rgba(31,119,180,0.6)",
-    "Patricia": "rgba(70,130,180,0.6)",
-    "Jonathan": "rgba(100,149,237,0.6)",
-    "Tobias": "rgba(255,127,14,0.6)",
-    "Kathrin": "rgba(255,165,0,0.6)",
-    "Sumak": "rgba(255,200,0,0.6)",
-    "Vanessa": "rgba(214,39,40,0.6)",
-    "Sebastian": "rgba(178,34,34,0.6)",
-    "Philipp": "rgba(44,160,44,0.6)",
-    "Unassigned": "rgba(200,200,200,0.6)"
+    "Dustin": "#1f77b4",
+    "Patricia": "#4682b4",
+    "Jonathan": "#6495ed",
+    "Tobias": "#ff7f0e",
+    "Kathrin": "#ffa500",
+    "Sumak": "#ffc800",
+    "Vanessa": "#d62728",
+    "Sebastian": "#b22222",
+    "Philipp": "#2ca02c",
+    "Unassigned": "#c8c8c8"
 }
 
 # -----------------------------
-# 4) Bundesländer-Zuordnung + Hover
+# 4) Hover-Text vorbereiten
 # -----------------------------
-bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
-plz_mit_bl = gpd.sjoin(plz_gdf, bl_gdf[['name','geometry']], how='left', predicate='intersects')
-plz_mit_bl = plz_mit_bl.reset_index(drop=True)
-plz_mit_bl['hover_text'] = plz_mit_bl.apply(
-    lambda row: f"{row['plz2']}\n{row['name'] if row['name'] else 'Unbekannt'}\n{row['consultant']}",
+plz_gdf['hover_text'] = plz_gdf.apply(
+    lambda row: f"PLZ: {row['plz2']}<br>Consultant: {row['consultant']}",
     axis=1
 )
 
 # -----------------------------
-# 5) Alle Polygone pro Consultant zusammenfassen
+# 5) Choropleth-Karte mit Plotly Express
 # -----------------------------
-traces = []
-for consultant in plz_mit_bl['consultant'].unique():
-    subset = plz_mit_bl[plz_mit_bl['consultant']==consultant]
-    if subset.empty:
-        continue
-
-    # Alle Geometrien zusammenfassen
-    merged = unary_union(subset.geometry)
-
-    # Stelle sicher, dass wir immer eine Liste von Polygonen haben
-    polys = [merged] if merged.geom_type=="Polygon" else list(merged.geoms)
-
-    for poly in polys:
-        lons, lats = zip(*poly.exterior.coords)
-        traces.append(go.Scattermapbox(
-            lon=lons,
-            lat=lats,
-            mode='lines',
-            fill='toself',
-            fillcolor=farbe_map[consultant],
-            line=dict(color='black', width=1),
-            hoverinfo='text',
-            text=[f"{consultant}"]*len(lons),
-            showlegend=False  # absolut keine automatische Legende
-        ))
-
-# -----------------------------
-# 6) Bundesländer Linien
-# -----------------------------
-for _, row in bl_gdf.iterrows():
-    geom = row.geometry
-    polys = [geom] if geom.geom_type=='Polygon' else geom.geoms
-    for poly in polys:
-        lons, lats = zip(*poly.exterior.coords)
-        traces.append(go.Scattermapbox(
-            lon=lons,
-            lat=lats,
-            mode='lines',
-            line=dict(color='black', width=2),
-            hoverinfo='skip',
-            showlegend=False
-        ))
-
-# -----------------------------
-# 7) Karte
-# -----------------------------
-fig = go.Figure(data=traces)
-fig.update_layout(
+fig = px.choropleth_mapbox(
+    plz_gdf,
+    geojson=plz_gdf.geometry,
+    locations=plz_gdf.index,
+    color='consultant',
+    hover_name='hover_text',
+    color_discrete_map=farbe_map,
     mapbox_style="carto-positron",
-    mapbox_zoom=5,
-    mapbox_center={"lat":51.0,"lon":10.0},
-    height=1000,
-    showlegend=False  # Sicherheit: keine Legende
+    zoom=5,
+    center={"lat": 51.0, "lon": 10.0},
+)
+
+fig.update_layout(
+    margin={"r":0,"t":0,"l":0,"b":0},
+    legend_title_text="Consultant",
+    height=1000
 )
 
 st.plotly_chart(fig, use_container_width=True)
-st.markdown("**Automatische Legende entfernt. Jede Farbe zeigt einen Consultant.**")
