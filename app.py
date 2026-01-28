@@ -7,7 +7,7 @@ import numpy as np
 
 # -----------------------------
 st.set_page_config(layout="wide")
-st.title("🗺️ Marktaufteilung DE Perm Embedded Team")
+st.title("Marktaufteilung DE Perm Embedded")
 
 # -----------------------------
 def load_geojson(url: str) -> gpd.GeoDataFrame:
