@@ -3,6 +3,7 @@ import geopandas as gpd
 import plotly.graph_objects as go
 import requests
 from io import BytesIO
+from shapely.geometry import MultiPolygon, Polygon
 
 # -----------------------------
 # 0) Titel
@@ -72,34 +73,53 @@ plz_mit_bl['hover_text'] = plz_mit_bl.apply(
 )
 
 # -----------------------------
-# 5) Karte bauen (komplett ohne Legende)
+# 5) Alle Polygone pro Consultant zusammenfassen
 # -----------------------------
-fig = go.Figure()
+consultants = plz_mit_bl['consultant'].unique()
+traces = []
 
-for idx, row in plz_mit_bl.iterrows():
-    geom = row.geometry
-    polygons = [geom] if geom.geom_type=='Polygon' else geom.geoms
-    for poly in polygons:
+for consultant in consultants:
+    subset = plz_mit_bl[plz_mit_bl['consultant']==consultant]
+    if subset.empty:
+        continue
+    
+    # Alle Polygone sammeln
+    polys = []
+    hover_texts = []
+    for geom, hover in zip(subset.geometry, subset.hover_text):
+        if geom.geom_type == "Polygon":
+            polys.append(geom)
+        elif geom.geom_type == "MultiPolygon":
+            polys.extend(list(geom.geoms))
+        hover_texts.append(hover)
+    
+    # MultiPolygon erstellen
+    multi = MultiPolygon(polys)
+    
+    # Jeden Polygon separater Trace für Hover, aber gleiche Farbe, kein Legendeneintrag
+    for poly, hover in zip(multi.geoms, hover_texts):
         lons, lats = zip(*poly.exterior.coords)
-        fig.add_trace(go.Scattermapbox(
+        traces.append(go.Scattermapbox(
             lon=lons,
             lat=lats,
             mode='lines',
             fill='toself',
-            fillcolor=farbe_map[row['consultant']],
+            fillcolor=farbe_map[consultant],
             line=dict(color='black', width=1),
             hoverinfo='text',
-            text=[row['hover_text']]*len(lons),
-            showlegend=False  # absolut kein Legendeneintrag
+            text=[hover]*len(lons),
+            showlegend=False
         ))
 
-# Bundesländer-Linien
+# -----------------------------
+# 6) Bundesländer Linien
+# -----------------------------
 for _, row in bl_gdf.iterrows():
     geom = row.geometry
     polys = [geom] if geom.geom_type=='Polygon' else geom.geoms
     for poly in polys:
         lons, lats = zip(*poly.exterior.coords)
-        fig.add_trace(go.Scattermapbox(
+        traces.append(go.Scattermapbox(
             lon=lons,
             lat=lats,
             mode='lines',
@@ -108,17 +128,17 @@ for _, row in bl_gdf.iterrows():
             showlegend=False
         ))
 
-# Layout
+# -----------------------------
+# 7) Karte
+# -----------------------------
+fig = go.Figure(data=traces)
 fig.update_layout(
     mapbox_style="carto-positron",
     mapbox_zoom=5,
     mapbox_center={"lat":51.0,"lon":10.0},
     height=1000,
-    showlegend=False  # redundante Sicherheit
+    showlegend=False  # Sicherheit: keine Legende
 )
 
 st.plotly_chart(fig, use_container_width=True)
-
-# -----------------------------
-# Hinweis: Legende wird manuell in Streamlit gebaut
-st.markdown("**Hinweis:** Automatische Plotly-Legende deaktiviert. Farben zeigen Consultant pro Gebiet.")
+st.markdown("**Automatische Legende entfernt. Farben zeigen Consultant pro Gebiet.**")
