@@ -48,23 +48,15 @@ plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassign
 # 3) Farben pro Consultant (klar unterscheidbar)
 # -----------------------------
 farbe_map = {
-    # Blau-Familie
     "Dustin": "rgba(31,119,180,0.6)",
     "Patricia": "rgba(70,130,180,0.6)",
     "Jonathan": "rgba(100,149,237,0.6)",
-
-    # Orange-Familie
     "Tobias": "rgba(255,127,14,0.6)",
     "Kathrin": "rgba(255,165,0,0.6)",
     "Sumak": "rgba(255,200,0,0.6)",
-
-    # Rot-Familie
     "Vanessa": "rgba(214,39,40,0.6)",
     "Sebastian": "rgba(178,34,34,0.6)",
-
-    # Grün-Familie
     "Philipp": "rgba(44,160,44,0.6)",
-
     "Unassigned": "rgba(200,200,200,0.6)"
 }
 
@@ -80,7 +72,7 @@ plz_mit_bl['hover_text'] = plz_mit_bl.apply(
 )
 
 # -----------------------------
-# 5) Karte bauen (Legende aus)
+# 5) Karte bauen (komplett ohne Legende)
 # -----------------------------
 fig = go.Figure()
 
@@ -98,10 +90,10 @@ for idx, row in plz_mit_bl.iterrows():
             line=dict(color='black', width=1),
             hoverinfo='text',
             text=[row['hover_text']]*len(lons),
-            showlegend=False  # Legende komplett aus
+            showlegend=False  # absolut kein Legendeneintrag
         ))
 
-# Bundesländer als Linien
+# Bundesländer-Linien
 for _, row in bl_gdf.iterrows():
     geom = row.geometry
     polys = [geom] if geom.geom_type=='Polygon' else geom.geoms
@@ -121,12 +113,12 @@ fig.update_layout(
     mapbox_style="carto-positron",
     mapbox_zoom=5,
     mapbox_center={"lat":51.0,"lon":10.0},
-    height=1000
+    height=1000,
+    showlegend=False  # redundante Sicherheit
 )
 
 st.plotly_chart(fig, use_container_width=True)
 
 # -----------------------------
-# 6) Manuelle Legende in Streamlit (optional später)
-# -----------------------------
-st.markdown("**Legende entfernt – Farben zeigen Consultant pro Gebiet**")
+# Hinweis: Legende wird manuell in Streamlit gebaut
+st.markdown("**Hinweis:** Automatische Plotly-Legende deaktiviert. Farben zeigen Consultant pro Gebiet.")
