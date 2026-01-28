@@ -3,9 +3,10 @@ import geopandas as gpd
 import plotly.graph_objects as go
 import requests
 from io import BytesIO
+from shapely.geometry import MultiPolygon, Polygon
 
 st.set_page_config(layout="wide")
-st.title("🗺️ Marktaufteilung Dusteam")
+st.title("🗺️ Marktaufteilung DE Perm Embedded")
 
 # -----------------------------
 # 1) GeoJSON laden
@@ -42,24 +43,24 @@ plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_l
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# 3) Einheitliche, transparente Farben pro Consultant
+# 3) Einheitliche, klare Farben pro Consultant
 # -----------------------------
 color_map = {
-    # Gruppe 1: Blautöne
-    "Dustin": "rgba(31,119,180,0.5)",
-    "Patricia": "rgba(70,130,180,0.5)",
-    "Jonathan": "rgba(100,149,237,0.5)",
+    # Blau-Familie
+    "Dustin": "rgba(31,119,180,0.5)",      # dunkelblau
+    "Patricia": "rgba(70,130,180,0.5)",    # mittelblau
+    "Jonathan": "rgba(173,216,230,0.5)",   # hellblau / skyblue
 
-    # Gruppe 2: Orangetöne
+    # Orange-Familie
     "Tobias": "rgba(255,127,14,0.5)",
     "Kathrin": "rgba(255,165,0,0.5)",
-    "Sumak": "rgba(255,140,0,0.5)",
+    "Sumak": "rgba(255,200,0,0.5)",
 
-    # Gruppe 3: Rottöne
+    # Rot-Familie
     "Vanessa": "rgba(214,39,40,0.5)",
     "Sebastian": "rgba(178,34,34,0.5)",
 
-    # Gruppe 4: Grüntöne
+    # Grün-Familie
     "Philipp": "rgba(44,160,44,0.5)",
 
     "Unassigned": "rgba(200,200,200,0.5)"
@@ -67,53 +68,61 @@ color_map = {
 categories = list(color_map.keys())
 
 # -----------------------------
-# 4) Bundesland-Zuordnung + Hover-Text
+# 4) Bundesländer-Zuordnung + Hover
 # -----------------------------
 bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
 plz_with_bl = gpd.sjoin(plz_gdf, bl_gdf[['name','geometry']], how='left', predicate='intersects')
 plz_with_bl = plz_with_bl.reset_index(drop=True)
 
-# Hover-Text untereinander
 plz_with_bl['hover_text'] = plz_with_bl.apply(
     lambda row: f"{row['plz2']}\n{row['name'] if row['name'] else 'Unbekannt'}\n{row['consultant']}",
     axis=1
 )
 
 # -----------------------------
-# 5) Karte bauen: 1 Trace pro Consultant
+# 5) Karte bauen: 1 Trace pro Consultant (MultiPolygon)
 # -----------------------------
 fig = go.Figure()
 
 for consultant in categories:
     subset = plz_with_bl[plz_with_bl['consultant']==consultant]
-    lons_all, lats_all, texts_all = [], [], []
-
+    
+    # Alle Polygone eines Consultants zusammenfassen
+    polys = []
+    hover_texts = []
     for _, row in subset.iterrows():
         geom = row.geometry
-        polys = [geom] if geom.geom_type=='Polygon' else geom.geoms
-        for poly in polys:
-            lons, lats = zip(*poly.exterior.coords)
-            lons_all.extend(lons + (None,))
-            lats_all.extend(lats + (None,))
-            texts_all.extend([row['hover_text']]*len(lons)+[None])
-
-    fig.add_trace(go.Scattermapbox(
-        lon=lons_all,
-        lat=lats_all,
-        mode='lines',
-        fill='toself',
-        fillcolor=color_map[consultant],
-        line=dict(color='black', width=1),
-        hoverinfo='text',
-        text=texts_all,
-        name=consultant,
-        showlegend=True,
-        legendgroup=consultant,
-        visible=True
-    ))
+        if geom.geom_type == "Polygon":
+            polys.append(geom)
+        elif geom.geom_type == "MultiPolygon":
+            polys.extend(list(geom.geoms))
+        hover_texts.append(row['hover_text'])
+    
+    if not polys:
+        continue
+    
+    # MultiPolygon erzeugen
+    multi_poly = MultiPolygon(polys)
+    
+    for poly in multi_poly.geoms:
+        lons, lats = zip(*poly.exterior.coords)
+        fig.add_trace(go.Scattermapbox(
+            lon=lons + (None,),
+            lat=lats + (None,),
+            mode='lines',
+            fill='toself',
+            fillcolor=color_map[consultant],
+            line=dict(color='black', width=1),
+            hoverinfo='text',
+            text=hover_texts*len(lons),
+            name=consultant,
+            showlegend=True,
+            legendgroup=consultant,
+            visible=True
+        ))
 
 # -----------------------------
-# 6) Bundesländer als Linien (immer sichtbar)
+# 6) Bundesländer als Linien
 # -----------------------------
 for _, row in bl_gdf.iterrows():
     geom = row.geometry
