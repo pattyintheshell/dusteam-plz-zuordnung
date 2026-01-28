@@ -72,11 +72,17 @@ plz_gdf["fill_color"] = plz_gdf["consultant"].map(color_map)
 # 4) Bundesland-Zuordnung für Tooltip
 # -----------------------------
 bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
+
+# Spatial Join
 plz_gdf_with_bl = gpd.sjoin(plz_gdf, bl_gdf[['name','geometry']], how='left', predicate='intersects')
+plz_gdf_with_bl = plz_gdf_with_bl.reset_index(drop=True)  # ❌ Verhindert Index-Duplikate
+plz_gdf = plz_gdf_with_bl.copy()
+
+# Tooltip Spalte
 plz_gdf['tooltip_text'] = (
-    "PLZ: " + plz_gdf_with_bl['plz2'] +
-    "<br>Consultant: " + plz_gdf_with_bl['consultant'] +
-    "<br>Bundesland: " + plz_gdf_with_bl['name'].fillna("Unbekannt")
+    "PLZ: " + plz_gdf['plz2'] +
+    "<br>Consultant: " + plz_gdf['consultant'] +
+    "<br>Bundesland: " + plz_gdf['name'].fillna("Unbekannt")
 )
 
 # -----------------------------
