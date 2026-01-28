@@ -52,7 +52,7 @@ farbe_map = {
     "Dustin": "rgba(255, 223, 0, 0.4)",       # Gelb
     "Patricia": "rgba(255, 0, 0, 0.4)",       # Rot
     "Jonathan": "rgba(255, 102, 0, 0.4)",     # Orange
-    "Philipp": "rgba(30, 144, 255, 0.4)",     # Dunkelblau
+    "Philipp": "rgba(0, 100, 255, 0.4)",      # Dunkelblau
     "Tobias": "rgba(0, 100, 0, 0.4)",         # Dunkelgrün
     "Kathrin": "rgba(140, 50, 200, 0.4)",     # Lila
     "Sumak": "rgba(0, 206, 209, 0.4)",        # Hellblau
