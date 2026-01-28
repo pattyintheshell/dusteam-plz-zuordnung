@@ -51,7 +51,7 @@ categories = ['Dustin','Tobias','Philipp','Vanessa','Patricia','Kathrin',
               'Sebastian','Sumak','Jonathan','Unassigned']
 
 # -----------------------------
-# 4) Karte bauen: 1 Trace pro Consultant
+# 4) Karte bauen: 1 Trace pro Consultant (PLZ 2-stellig)
 # -----------------------------
 fig = go.Figure()
 
@@ -68,7 +68,6 @@ for consultant in categories:
             lats_all.extend(lats + (None,))
             texts_all.extend([f"PLZ: {row['plz2']}<br>Consultant: {consultant}"]*len(lons) + [None])
 
-    # Legende nur einmal pro Consultant
     fig.add_trace(go.Scattermapbox(
         lon=lons_all,
         lat=lats_all,
@@ -79,12 +78,42 @@ for consultant in categories:
         hoverinfo='text',
         text=texts_all,
         name=consultant,
-        showlegend=True,        # nur dieser Trace taucht in der Legende auf
-        legendgroup=consultant  # verhindert doppelte Einträge bei Mobil
+        showlegend=True,
+        legendgroup=consultant
     ))
 
 # -----------------------------
-# 5) Layout: schwebende, mobilfreundliche Legende
+# 5) Bundesländer GeoJSON laden
+# -----------------------------
+BL_URL = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/releases/download/Bundesländer%20GeoJSON/bundeslaender_deutschland.geojson"
+
+r_bl = requests.get(BL_URL)
+if r_bl.status_code != 200:
+    st.error(f"Fehler beim Laden der Bundesländer GeoJSON: {r_bl.status_code}")
+    st.stop()
+
+bl_gdf = gpd.read_file(BytesIO(r_bl.content))
+
+# -----------------------------
+# 6) Bundesländer als Umrisse hinzufügen
+# -----------------------------
+for _, row in bl_gdf.iterrows():
+    geom = row.geometry
+    polys = [geom] if isinstance(geom, Polygon) else geom.geoms
+    for poly in polys:
+        lons, lats = zip(*poly.exterior.coords)
+        fig.add_trace(go.Scattermapbox(
+            lon=lons + (None,),
+            lat=lats + (None,),
+            mode='lines',
+            line=dict(color='black', width=2),
+            fill=None,
+            hoverinfo='skip',
+            showlegend=False
+        ))
+
+# -----------------------------
+# 7) Layout: schwebende, mobilfreundliche Legende
 # -----------------------------
 fig.update_layout(
     mapbox_style="carto-positron",
