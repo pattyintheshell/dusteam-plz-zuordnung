@@ -129,25 +129,17 @@ for geom in bl_gdf.geometry:
         ))
 
 # -----------------------------
-# PLZ2-Beschriftung mit optimaler Position
-plz2_gdf = plz_gdf.dissolve(by="plz2")  # alle PLZ2 zusammenfassen
-
-# representative_point() liefert Punkte innerhalb der Polygone
-label_lons = []
-label_lats = []
-
-for geom in plz2_gdf.geometry:
-    pt = geom.representative_point()
-    label_lons.append(pt.x)
-    label_lats.append(pt.y)
+# PLZ2-Beschriftung hinzufügen (kleiner Text für mobile)
+plz2_gdf = plz_gdf.dissolve(by="plz2")
+plz2_gdf["centroid"] = plz2_gdf.geometry.centroid
 
 fig.add_trace(go.Scattermapbox(
-    lon=label_lons,
-    lat=label_lats,
+    lon=plz2_gdf.centroid.x,
+    lat=plz2_gdf.centroid.y,
     mode="text",
     text=plz2_gdf.index,           # 2er-PLZ als Label
     textposition="middle center",
-    textfont=dict(size=12, color="black"),
+    textfont=dict(size=10, color="black"),  # 👈 kleiner als vorher
     hoverinfo="skip",
     showlegend=False
 ))
