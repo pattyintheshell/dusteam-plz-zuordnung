@@ -60,7 +60,7 @@ farbe_map = {
     "Philipp": "#1f77b480",     # Blau transparent
     "Unassigned": "#c8c8c830"  # Grau
 }
-ffbb7880
+
 # Farbe als neue Spalte
 plz_gdf['color'] = plz_gdf['consultant'].map(farbe_map)
 
