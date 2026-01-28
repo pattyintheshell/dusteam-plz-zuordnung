@@ -9,7 +9,7 @@ st.set_page_config(layout="wide")
 st.title("🗺️ Marktaufteilung Dusteam")
 
 # -----------------------------
-# 1) PLZ GeoJSON laden
+# PLZ GeoJSON laden
 # -----------------------------
 PLZ_URL = "https://raw.githubusercontent.com/tdudek/de-plz-geojson/master/plz-2stellig.geojson"
 r = requests.get(PLZ_URL)
@@ -21,7 +21,7 @@ plz_gdf = gpd.read_file(BytesIO(r.content))
 plz_gdf['plz2'] = plz_gdf['plz'].astype(str).str[:2]
 
 # -----------------------------
-# 2) Consultant-Zuordnung
+# Consultant-Zuordnung
 # -----------------------------
 plz_mapping = {
     'Dustin': ['77','78','79','88'],
@@ -38,7 +38,7 @@ plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_l
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# 3) Farben
+# Farben
 # -----------------------------
 color_map = {
     'Dustin': '#1f77b4','Tobias': '#ff7f0e','Philipp': '#2ca02c','Vanessa': '#d62728',
@@ -50,29 +50,30 @@ categories = ['Dustin','Tobias','Philipp','Vanessa','Patricia','Kathrin',
               'Sebastian','Sumak','Jonathan','Unassigned']
 
 # -----------------------------
-# 4) Karte bauen: 1 Trace pro Consultant
+# Karte bauen
 # -----------------------------
 fig = go.Figure()
 
+# Polygon-Traces: Nur für Hover, keine Legende
+for _, row in plz_gdf.iterrows():
+    geom = row.geometry
+    polys = [geom] if isinstance(geom, Polygon) else geom.geoms
+    for poly in polys:
+        lons, lats = zip(*poly.exterior.coords)
+        fig.add_trace(go.Scattermapbox(
+            lon=lons,
+            lat=lats,
+            mode='lines',
+            fill='toself',
+            fillcolor=color_map[row['consultant']],
+            line=dict(color='black', width=1),
+            hoverinfo='text',
+            text=f"PLZ: {row['plz2']}<br>Consultant: {row['consultant']}",
+            showlegend=False  # ⚠️ wichtig: Polygon erzeugt keine Legende
+        ))
+
+# Dummy-Traces für Legende (1 pro Consultant, Quadrat)
 for consultant in categories:
-    subset = plz_gdf[plz_gdf['consultant'] == consultant]
-    for _, row in subset.iterrows():
-        geom = row.geometry
-        polygons = [geom] if isinstance(geom, Polygon) else geom.geoms
-        for poly in polygons:
-            lons, lats = zip(*poly.exterior.coords)
-            fig.add_trace(go.Scattermapbox(
-                lon=lons,
-                lat=lats,
-                mode='lines',
-                fill='toself',
-                fillcolor=color_map[consultant],
-                line=dict(color='black', width=1),
-                hoverinfo='text',
-                text=f"PLZ: {row['plz2']}<br>Consultant: {consultant}",
-                showlegend=False  # Polygon-Traces erzeugen KEINE Legende
-            ))
-    # Dummy Trace für Legende (1 pro Consultant)
     fig.add_trace(go.Scattermapbox(
         lon=[None],
         lat=[None],
@@ -83,7 +84,7 @@ for consultant in categories:
     ))
 
 # -----------------------------
-# 5) Layout
+# Layout
 # -----------------------------
 fig.update_layout(
     mapbox_style="carto-positron",
