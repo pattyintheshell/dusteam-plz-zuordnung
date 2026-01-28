@@ -39,32 +39,37 @@ plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_l
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# Neue starke, transparente Farben
+# -----------------------------
+# Starke, deutlich unterscheidbare transparente Farben
 farbe_map = {
     # Blau-Familie
     "Dustin": "rgba(31,119,180,0.4)",
     "Patricia": "rgba(0,102,204,0.4)",
     "Jonathan": "rgba(102,178,255,0.4)",
-    
-    # Grün-Familie (war vorher Orange)
+
+    # Grün-Familie (war Orange)
     "Tobias": "rgba(44,160,44,0.4)",
     "Kathrin": "rgba(102,204,102,0.4)",
     "Sumak": "rgba(170,255,170,0.4)",
-    
+
     # Lila/Pink-Familie (statt Rot)
     "Vanessa": "rgba(148,0,211,0.4)",
     "Sebastian": "rgba(255,20,147,0.4)",
-    
-    # Orange-Familie (war vorher Grün)
+
+    # Orange-Familie (war Grün)
     "Philipp": "rgba(255,127,14,0.4)",
-    
+
     "Unassigned": "rgba(200,200,200,0.4)"
 }
 
 # -----------------------------
 # Hover-Text: PLZ, Bundesland, Consultant untereinander
-plz_gdf['hover_text'] = plz_gdf.apply(
-    lambda row: f"{row['plz2']}<br>{row['name'] if 'name' in row else ''}<br>{row['consultant']}",
+# plz_with_bl: wir joinen noch die Bundesländer
+bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
+plz_with_bl = gpd.sjoin(plz_gdf, bl_gdf[['name','geometry']], how='left', predicate='intersects')
+plz_with_bl = plz_with_bl.reset_index(drop=True)
+plz_with_bl['hover_text'] = plz_with_bl.apply(
+    lambda row: f"{row['plz2']}<br>{row['name'] if row['name'] else 'Unbekannt'}<br>{row['consultant']}",
     axis=1
 )
 
@@ -72,8 +77,8 @@ plz_gdf['hover_text'] = plz_gdf.apply(
 fig = go.Figure()
 
 # 2er-PLZ Gebiete
-for consultant in plz_gdf['consultant'].unique():
-    subset = plz_gdf[plz_gdf['consultant'] == consultant]
+for consultant in plz_with_bl['consultant'].unique():
+    subset = plz_with_bl[plz_with_bl['consultant'] == consultant]
     if subset.empty:
         continue
     
@@ -94,7 +99,7 @@ for consultant in plz_gdf['consultant'].unique():
             ))
 
 # -----------------------------
-# Unsichtbare Traces für Legende
+# Unsichtbare Traces nur für Legende
 for consultant, color in farbe_map.items():
     fig.add_trace(go.Scattermapbox(
         lon=[None], lat=[None],
@@ -106,7 +111,6 @@ for consultant, color in farbe_map.items():
 
 # -----------------------------
 # Bundesländer Linien
-bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
 for _, row in bl_gdf.iterrows():
     geom = row.geometry
     polys = [geom] if geom.geom_type=="Polygon" else geom.geoms
