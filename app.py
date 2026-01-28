@@ -45,19 +45,19 @@ plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_l
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# 3) Farben pro Consultant
+# 3) Neue, deutlich unterscheidbare transparente Farben pro Consultant
 # -----------------------------
 farbe_map = {
-    "Dustin": "#1f77b4",
-    "Patricia": "#4682b4",
-    "Jonathan": "#6495ed",
-    "Tobias": "#ff7f0e",
-    "Kathrin": "#ffa500",
-    "Sumak": "#ffc800",
-    "Vanessa": "#d62728",
-    "Sebastian": "#b22222",
-    "Philipp": "#2ca02c",
-    "Unassigned": "#c8c8c8"
+    "Dustin": "rgba(31,119,180,0.4)",      # kräftiges Blau, transparent
+    "Patricia": "rgba(0,162,232,0.4)",     # helles Blau
+    "Jonathan": "rgba(102,204,255,0.4)",   # hellstes Blau
+    "Tobias": "rgba(255,127,14,0.4)",      # kräftiges Orange
+    "Kathrin": "rgba(255,178,102,0.4)",    # helleres Orange
+    "Sumak": "rgba(255,210,120,0.4)",      # sehr helles Orange
+    "Vanessa": "rgba(214,39,40,0.4)",      # kräftiges Rot
+    "Sebastian": "rgba(255,99,92,0.4)",    # helleres Rot
+    "Philipp": "rgba(44,160,44,0.4)",      # Grün
+    "Unassigned": "rgba(200,200,200,0.4)"  # Grau
 }
 
 # -----------------------------
@@ -91,7 +91,9 @@ for consultant in plz_gdf['consultant'].unique():
                 line=dict(color='black', width=1),
                 hoverinfo='text',
                 text=[hover]*len(lons),
-                showlegend=False  # KEINE automatische Legende
+                name=consultant,       # Legende einmal pro Consultant
+                legendgroup=consultant, 
+                showlegend=True
             ))
 
 # -----------------------------
@@ -120,17 +122,16 @@ fig.update_layout(
     mapbox_zoom=5,
     mapbox_center={"lat": 51.0, "lon": 10.0},
     height=1000,
-    showlegend=False
+    legend=dict(
+        title="Consultants",
+        yanchor="top",
+        y=0.99,
+        xanchor="right",
+        x=0.99,
+        bgcolor="white",
+        bordercolor="black",
+        borderwidth=1
+    )
 )
 
 st.plotly_chart(fig, use_container_width=True)
-
-# -----------------------------
-# 8) Manuelle Streamlit-Legende
-# -----------------------------
-st.markdown("### Legende")
-for consultant, color in farbe_map.items():
-    st.markdown(
-        f"<span style='display:inline-block;width:20px;height:20px;background-color:{color};margin-right:10px;'></span> {consultant}",
-        unsafe_allow_html=True
-    )
