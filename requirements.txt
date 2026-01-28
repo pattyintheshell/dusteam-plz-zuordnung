@@ -1,4 +1,7 @@
-streamlit
-geopandas
-plotly
-requests
+streamlit>=1.25
+geopandas>=0.13.0
+shapely>=2.0
+plotly>=5.15.0
+requests>=2.30
+pandas>=2.0
+numpy>=1.25
