@@ -3,6 +3,7 @@ import geopandas as gpd
 import plotly.graph_objects as go
 import requests
 from io import BytesIO
+from shapely.geometry import Polygon, MultiPolygon
 
 st.set_page_config(layout="wide")
 st.title("🗺️ Marktaufteilung Dusteam")
@@ -45,35 +46,33 @@ color_map = {
     'Jonathan': '#bcbd22','Unassigned': '#c0c0c0'
 }
 
-# Reihenfolge der Legende
 categories = ['Dustin','Tobias','Philipp','Vanessa','Patricia','Kathrin',
               'Sebastian','Sumak','Jonathan','Unassigned']
 
 # -----------------------------
-# 4) Karte bauen
+# 4) Karte bauen: 1 Trace pro Consultant
 # -----------------------------
 fig = go.Figure()
 
-# Polygon-Traces (kein Legenden-Eintrag, nur Hover)
-for _, row in plz_gdf.iterrows():
-    geom = row.geometry
-    polygons = [geom] if geom.type == "Polygon" else geom.geoms
-    for poly in polygons:
-        lons, lats = zip(*poly.exterior.coords)
-        fig.add_trace(go.Scattermapbox(
-            lon=lons,
-            lat=lats,
-            mode='lines',
-            fill='toself',
-            fillcolor=color_map[row['consultant']],
-            line=dict(color='black', width=1),
-            hoverinfo='text',
-            text=f"PLZ: {row['plz2']}<br>Consultant: {row['consultant']}",
-            showlegend=False  # ⚠️ Polygon-Traces erzeugen keine Legende
-        ))
-
-# Dummy-Traces nur für Legende (Quadrat, 1 pro Consultant)
 for consultant in categories:
+    subset = plz_gdf[plz_gdf['consultant'] == consultant]
+    for _, row in subset.iterrows():
+        geom = row.geometry
+        polygons = [geom] if isinstance(geom, Polygon) else geom.geoms
+        for poly in polygons:
+            lons, lats = zip(*poly.exterior.coords)
+            fig.add_trace(go.Scattermapbox(
+                lon=lons,
+                lat=lats,
+                mode='lines',
+                fill='toself',
+                fillcolor=color_map[consultant],
+                line=dict(color='black', width=1),
+                hoverinfo='text',
+                text=f"PLZ: {row['plz2']}<br>Consultant: {consultant}",
+                showlegend=False  # Polygon-Traces erzeugen KEINE Legende
+            ))
+    # Dummy Trace für Legende (1 pro Consultant)
     fig.add_trace(go.Scattermapbox(
         lon=[None],
         lat=[None],
