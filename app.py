@@ -50,37 +50,34 @@ categories = ['Dustin','Tobias','Philipp','Vanessa','Patricia','Kathrin',
               'Sebastian','Sumak','Jonathan','Unassigned']
 
 # -----------------------------
-# Karte bauen
+# Karte bauen: 1 Trace pro Consultant
 # -----------------------------
 fig = go.Figure()
 
-# Polygon-Traces: Nur für Hover, keine Legende
-for _, row in plz_gdf.iterrows():
-    geom = row.geometry
-    polys = [geom] if isinstance(geom, Polygon) else geom.geoms
-    for poly in polys:
-        lons, lats = zip(*poly.exterior.coords)
-        fig.add_trace(go.Scattermapbox(
-            lon=lons,
-            lat=lats,
-            mode='lines',
-            fill='toself',
-            fillcolor=color_map[row['consultant']],
-            line=dict(color='black', width=1),
-            hoverinfo='text',
-            text=f"PLZ: {row['plz2']}<br>Consultant: {row['consultant']}",
-            showlegend=False  # ⚠️ wichtig: Polygon erzeugt keine Legende
-        ))
-
-# Dummy-Traces für Legende (1 pro Consultant, Quadrat)
 for consultant in categories:
+    subset = plz_gdf[plz_gdf['consultant'] == consultant]
+    lons_all, lats_all, texts_all = [], [], []
+    
+    for _, row in subset.iterrows():
+        geom = row.geometry
+        polygons = [geom] if isinstance(geom, Polygon) else geom.geoms
+        for poly in polygons:
+            lons, lats = zip(*poly.exterior.coords)
+            lons_all.extend(lons + (None,))
+            lats_all.extend(lats + (None,))
+            texts_all.extend([f"PLZ: {row['plz2']}<br>Consultant: {consultant}"]*len(lons) + [None])
+    
     fig.add_trace(go.Scattermapbox(
-        lon=[None],
-        lat=[None],
-        mode='markers',
-        marker=dict(size=15, color=color_map[consultant], symbol='square'),
+        lon=lons_all,
+        lat=lats_all,
+        mode='lines',
+        fill='toself',
+        fillcolor=color_map[consultant],
+        line=dict(color='black', width=1),
+        hoverinfo='text',
+        text=texts_all,
         name=consultant,
-        showlegend=True
+        showlegend=True  # ✅ Nur 1 Trace pro Consultant -> 1 Legenden-Eintrag
     ))
 
 # -----------------------------
