@@ -54,7 +54,7 @@ categories = ['Dustin','Tobias','Philipp','Vanessa','Patricia','Kathrin',
 # -----------------------------
 fig = go.Figure()
 
-# Polygon-Traces: Nur für Hover, KEINE Legende
+# Polygon-Traces: nur Hover, keine Legende
 for _, row in plz_gdf.iterrows():
     geom = row.geometry
     polys = [geom] if isinstance(geom, Polygon) else geom.geoms
@@ -69,10 +69,10 @@ for _, row in plz_gdf.iterrows():
             line=dict(color='black', width=1),
             hoverinfo='text',
             text=f"PLZ: {row['plz2']}<br>Consultant: {row['consultant']}",
-            showlegend=False  # ⚠️ Hier liegt der Unterschied: Polygon-Trace erzeugt KEINE Legende
+            showlegend=False
         ))
 
-# Dummy-Traces für Legende (1 pro Consultant, Quadrat)
+# Dummy-Traces für Legende: 1 pro Consultant, legendgroup = Name
 for consultant in categories:
     fig.add_trace(go.Scattermapbox(
         lon=[None],
@@ -80,11 +80,12 @@ for consultant in categories:
         mode='markers',
         marker=dict(size=15, color=color_map[consultant], symbol='square'),
         name=consultant,
+        legendgroup=consultant,   # verhindert doppelte Legenden
         showlegend=True
     ))
 
 # -----------------------------
-# 5) Layout
+# 5) Layout + schwebender Kasten für Legende
 # -----------------------------
 fig.update_layout(
     mapbox_style="carto-positron",
@@ -95,10 +96,15 @@ fig.update_layout(
         title="Consultants",
         title_font=dict(color="black", size=20, family="Arial Black"),
         font=dict(color="black", size=16),
-        bgcolor="rgba(255,255,255,0.9)",
-        yanchor="top", y=0.99,
-        xanchor="right", x=0.99,
-        traceorder="normal"
+        bgcolor="white",
+        bordercolor="black",
+        borderwidth=2,
+        x=0.99,
+        y=0.99,
+        xanchor="right",
+        yanchor="top",
+        traceorder="normal",
+        orientation="v"
     )
 )
 
