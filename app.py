@@ -88,19 +88,21 @@ plz_with_bl['hover_text'] = plz_with_bl.apply(
 fig = go.Figure()
 
 for consultant in categories:
-    subset = plz_with_bl[plz_with_bl['consultant']==consultant]
+    subset = plz_with_bl[plz_with_bl['consultant'] == consultant]
     if subset.empty:
         continue
 
-    # Alle Polygone des Consultants sammeln
+    # Alle Polygone sammeln
     all_polys = []
     hover_texts = []
     for geom, hover_text in zip(subset.geometry, subset['hover_text']):
         if geom.geom_type == "Polygon":
             all_polys.append(geom)
+            hover_texts.append(hover_text)
         elif geom.geom_type == "MultiPolygon":
-            all_polys.extend(list(geom.geoms))
-        hover_texts.append(hover_text)
+            for poly in geom.geoms:
+                all_polys.append(poly)
+                hover_texts.append(hover_text)
 
     # EIN Trace pro Consultant
     lon_list, lat_list, text_list = [], [], []
@@ -108,7 +110,7 @@ for consultant in categories:
         lons, lats = zip(*poly.exterior.coords)
         lon_list.extend(lons + (None,))
         lat_list.extend(lats + (None,))
-        text_list.extend([hover_text]*len(lons) + [None])
+        text_list.extend([hover_text] * len(lons) + [None])
 
     fig.add_trace(go.Scattermapbox(
         lon=lon_list,
@@ -120,8 +122,8 @@ for consultant in categories:
         hoverinfo='text',
         text=text_list,
         name=consultant,
-        showlegend=True,         # nur EIN Eintrag
-        legendgroup=consultant,
+        showlegend=True,          # nur EINmal pro Consultant
+        legendgroup=consultant
     ))
 
 # -----------------------------
