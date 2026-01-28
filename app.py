@@ -3,7 +3,8 @@ import geopandas as gpd
 import plotly.graph_objects as go
 import requests
 from io import BytesIO
-from shapely.geometry import MultiPolygon, Polygon
+from shapely.ops import unary_union
+from shapely.geometry import Polygon, MultiPolygon
 
 # -----------------------------
 # 0) Titel
@@ -46,7 +47,7 @@ plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_l
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# 3) Farben pro Consultant (klar unterscheidbar)
+# 3) Farben pro Consultant
 # -----------------------------
 farbe_map = {
     "Dustin": "rgba(31,119,180,0.6)",
@@ -75,29 +76,19 @@ plz_mit_bl['hover_text'] = plz_mit_bl.apply(
 # -----------------------------
 # 5) Alle Polygone pro Consultant zusammenfassen
 # -----------------------------
-consultants = plz_mit_bl['consultant'].unique()
 traces = []
-
-for consultant in consultants:
+for consultant in plz_mit_bl['consultant'].unique():
     subset = plz_mit_bl[plz_mit_bl['consultant']==consultant]
     if subset.empty:
         continue
-    
-    # Alle Polygone sammeln
-    polys = []
-    hover_texts = []
-    for geom, hover in zip(subset.geometry, subset.hover_text):
-        if geom.geom_type == "Polygon":
-            polys.append(geom)
-        elif geom.geom_type == "MultiPolygon":
-            polys.extend(list(geom.geoms))
-        hover_texts.append(hover)
-    
-    # MultiPolygon erstellen
-    multi = MultiPolygon(polys)
-    
-    # Jeden Polygon separater Trace für Hover, aber gleiche Farbe, kein Legendeneintrag
-    for poly, hover in zip(multi.geoms, hover_texts):
+
+    # Alle Geometrien zusammenfassen
+    merged = unary_union(subset.geometry)
+
+    # Stelle sicher, dass wir immer eine Liste von Polygonen haben
+    polys = [merged] if merged.geom_type=="Polygon" else list(merged.geoms)
+
+    for poly in polys:
         lons, lats = zip(*poly.exterior.coords)
         traces.append(go.Scattermapbox(
             lon=lons,
@@ -107,8 +98,8 @@ for consultant in consultants:
             fillcolor=farbe_map[consultant],
             line=dict(color='black', width=1),
             hoverinfo='text',
-            text=[hover]*len(lons),
-            showlegend=False
+            text=[f"{consultant}"]*len(lons),
+            showlegend=False  # absolut keine automatische Legende
         ))
 
 # -----------------------------
@@ -141,4 +132,4 @@ fig.update_layout(
 )
 
 st.plotly_chart(fig, use_container_width=True)
-st.markdown("**Automatische Legende entfernt. Farben zeigen Consultant pro Gebiet.**")
+st.markdown("**Automatische Legende entfernt. Jede Farbe zeigt einen Consultant.**")
