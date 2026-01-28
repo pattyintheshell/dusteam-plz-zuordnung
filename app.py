@@ -6,7 +6,7 @@ from io import BytesIO
 
 # -----------------------------
 st.set_page_config(layout="wide")
-st.title("🗺️ Marktaufteilung DE Perm Embedded Team")
+st.title("Marktaufteilung: DE Perm Embedded")
 
 # -----------------------------
 def load_geojson(url: str) -> gpd.GeoDataFrame:
@@ -40,7 +40,7 @@ plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_l
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# Hover-Text pro PLZ (nur PLZ2 und Consultant)
+# Hover-Text pro PLZ (nur PLZ2 und Consultant, sauber)
 plz_gdf['hover_text'] = plz_gdf.apply(
     lambda row: f"{row['plz2']} {row['consultant']}",
     axis=1
@@ -54,7 +54,7 @@ farbe_map = {
     "Jonathan": "rgba(255, 102, 0, 0.4)",     # Orange
     "Philipp": "rgba(0, 100, 255, 0.4)",      # Blau
     "Tobias": "rgba(0, 100, 0, 0.4)",         # Dunkleres Grün
-    "Kathrin": "rgba(150, 70, 200, 0.4)",     # Lila minimal heller
+    "Kathrin": "rgba(160, 80, 210, 0.4)",     # Lila minimal heller
     "Sumak": "rgba(0, 206, 209, 0.4)",        # Cyan/Türkis
     "Vanessa": "rgba(255, 102, 204, 0.4)",    # Helleres, rosa Pink
     "Sebastian": "rgba(110, 210, 110, 0.4)",  # Hellgrün minimal dunkler
@@ -83,7 +83,8 @@ for consultant, color in farbe_map.items():
             lons, lats = zip(*poly.exterior.coords)
             lon_list.extend(lons + (None,))
             lat_list.extend(lats + (None,))
-            text_list.extend([hover]*len(lons) + [None])
+            # Hover-Text sauber: nur gültige Werte, keine None
+            text_list.extend([hover if hover is not None else '' for _ in lons] + [None])
 
     fig.add_trace(go.Scattermapbox(
         lon=lon_list,
