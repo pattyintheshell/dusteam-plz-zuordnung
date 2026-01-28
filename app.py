@@ -52,12 +52,12 @@ farbe_map = {
     "Dustin": "rgba(255, 223, 0, 0.4)",       # Gelb
     "Patricia": "rgba(255, 0, 0, 0.4)",       # Rot
     "Jonathan": "rgba(255, 102, 0, 0.4)",     # Orange
-    "Philipp": "rgba(30, 144, 255, 0.4)",     # Blau
-    "Tobias": "rgba(0, 100, 0, 0.4)",         # Dunkleres Grün
-    "Kathrin": "rgba(186, 85, 211, 0.4)",     # Helles Lila
-    "Sumak": "rgba(0, 206, 209, 0.4)",        # Cyan/Türkis
-    "Vanessa": "rgba(255, 0, 180, 0.4)",      # Kräftiges Magenta
-    "Sebastian": "rgba(110, 210, 110, 0.4)",  # Hellgrün minimal dunkler
+    "Philipp": "rgba(30, 144, 255, 0.4)",     # Dunkelblau
+    "Tobias": "rgba(0, 100, 0, 0.4)",         # Dunkelgrün
+    "Kathrin": "rgba(140, 50, 200, 0.4)",     # Lila
+    "Sumak": "rgba(0, 206, 209, 0.4)",        # Hellblau
+    "Vanessa": "rgba(255, 0, 180, 0.4)",      # Pink
+    "Sebastian": "rgba(110, 210, 110, 0.4)",  # Hellgrün
     "Unassigned": "rgba(200, 200, 200, 0.4)"  # Grau
 }
 
