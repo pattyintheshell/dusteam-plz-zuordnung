@@ -40,25 +40,25 @@ plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_l
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# Hover-Text
+# Hover-Text pro PLZ (untereinander)
 plz_gdf['hover_text'] = plz_gdf.apply(
     lambda row: f"{row['plz2']}\n{row['name'] if 'name' in row else 'Unbekannt'}\n{row['consultant']}",
     axis=1
 )
 
 # -----------------------------
-# Farben pro Consultant (transparent)
+# Farben pro Consultant (nur #RRGGBB, Transparenz über opacity)
 farbe_map = {
-    "Dustin": "#1f77b480",     
-    "Patricia": "#ff7f1480",   
-    "Jonathan": "#2ca03c80",   
-    "Tobias": "#d6274080",     
-    "Kathrin": "#9467bd80",    
-    "Sumak": "#ff989680",      
-    "Vanessa": "#ffbb7880",    
-    "Sebastian": "#17becf80",  
-    "Philipp": "#7f7f0080",    
-    "Unassigned": "#c8c8c830"
+    "Dustin": "#1f77b4",     
+    "Patricia": "#ff7f14",   
+    "Jonathan": "#2ca03c",   
+    "Tobias": "#d62740",     
+    "Kathrin": "#9467bd",    
+    "Sumak": "#ff9896",      
+    "Vanessa": "#ffbb78",    
+    "Sebastian": "#17becf",  
+    "Philipp": "#7f7f00",    
+    "Unassigned": "#c8c8c8"
 }
 
 # -----------------------------
@@ -97,7 +97,8 @@ for consultant, color in farbe_map.items():
         hoverinfo='text',
         name=consultant,
         showlegend=True,
-        legendgroup=consultant
+        legendgroup=consultant,
+        opacity=0.5
     ))
 
 # -----------------------------
