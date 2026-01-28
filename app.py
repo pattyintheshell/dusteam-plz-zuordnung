@@ -74,7 +74,7 @@ plz_with_bl['hover_text'] = plz_with_bl.apply(
 )
 
 # -----------------------------
-# 5) Karte bauen: EIN Trace pro Consultant
+# 5) Karte bauen: EIN Trace pro Consultant + Legenden-Fix
 # -----------------------------
 fig = go.Figure()
 
@@ -86,7 +86,6 @@ for consultant in categories:
     lon_list, lat_list, text_list = [], [], []
 
     for geom, hover_text in zip(subset.geometry, subset['hover_text']):
-        # MultiPolygon auftrennen
         polygons = [geom] if geom.geom_type=='Polygon' else geom.geoms
         for poly in polygons:
             lons, lats = zip(*poly.exterior.coords)
@@ -94,6 +93,7 @@ for consultant in categories:
             lat_list.extend(lats + (None,))
             text_list.extend([hover_text]*len(lons) + [None])
 
+    # Haupt-Trace: Map mit Hover, aber keine Legende
     fig.add_trace(go.Scattermapbox(
         lon=lon_list,
         lat=lat_list,
@@ -103,9 +103,17 @@ for consultant in categories:
         line=dict(color='black', width=1),
         hoverinfo='text',
         text=text_list,
+        showlegend=False
+    ))
+
+    # Unsichtbarer Trace nur für die Legende
+    fig.add_trace(go.Scattermapbox(
+        lon=[None],
+        lat=[None],
+        mode='lines',
+        line=dict(color=color_map[consultant], width=1),
         name=consultant,
-        showlegend=True,          # nur EINmal pro Consultant
-        legendgroup=consultant
+        showlegend=True
     ))
 
 # -----------------------------
