@@ -40,7 +40,7 @@ plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_l
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# Hover-Text pro PLZ (untereinander)
+# Hover-Text pro PLZ (untereinander) – nur diese Zeile geändert
 plz_gdf['hover_text'] = plz_gdf.apply(
     lambda row: f"{row['plz2']}\n{row['bundesland'] if 'bundesland' in row else 'Unbekannt'}\n{row['consultant']}",
     axis=1
@@ -91,7 +91,7 @@ for consultant, color in farbe_map.items():
         mode='lines',
         fill='toself',
         fillcolor=color,
-        line=dict(color='black', width=1),  # PLZ-Linien etwas dünner
+        line=dict(color='black', width=1),  # PLZ-Linien
         text=text_list,
         hoverinfo='text',
         name=consultant,
@@ -103,7 +103,7 @@ for consultant, color in farbe_map.items():
     fig.add_trace(go.Scattermapbox(
         lon=[None], lat=[None],
         mode='markers',
-        marker=dict(size=20, color=color),  # größere Kreise
+        marker=dict(size=20, color=color),
         name=consultant,
         showlegend=True
     ))
@@ -119,7 +119,7 @@ for geom in bl_gdf.geometry:
             lon=lons,
             lat=lats,
             mode='lines',
-            line=dict(color='black', width=2),  # Bundesländer-Linien dünner
+            line=dict(color='black', width=2),  # Bundesländer-Linien
             hoverinfo='skip',
             showlegend=False
         ))
