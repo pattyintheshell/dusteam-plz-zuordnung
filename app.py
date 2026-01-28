@@ -47,30 +47,31 @@ plz_gdf['hover_text'] = plz_gdf.apply(
 )
 
 # -----------------------------
-# Farben pro Consultant (einheitlich)
+# Farben pro Consultant (klar, transparent)
 farbe_map = {
-    "Dustin": "#7f7f0080",      # Gelb/Olive transparent
-    "Patricia": "#d6274080",    # Rot transparent
-    "Jonathan": "#ff7f1480",    # Orange transparent
-    "Tobias": "#2ca03c80",      # Grün transparent
+    "Dustin": "#1f77b480",      # Blau transparent
+    "Patricia": "#ff7f1480",    # Orange transparent
+    "Jonathan": "#2ca03c80",    # Grün transparent
+    "Tobias": "#d6274080",      # Rot transparent
     "Kathrin": "#9467bd80",     # Lila transparent
-    "Sumak": "#17becf80",       # Cyan transparent
-    "Vanessa": "#ff989680",     # Pink transparent
-    "Sebastian": "#ffbb7880",   # Hellorange transparent
-    "Philipp": "#1f77b480",     # Blau transparent
+    "Sumak": "#ff989680",       # Pink transparent
+    "Vanessa": "#ffbb7880",     # Hellorange transparent
+    "Sebastian": "#17becf80",   # Cyan transparent
+    "Philipp": "#7f7f0080",     # Gelb/Olive transparent
     "Unassigned": "#c8c8c830"  # Grau
 }
 
-# Farbe als neue Spalte
-plz_gdf['color'] = plz_gdf['consultant'].map(farbe_map)
+# -----------------------------
+# GeoJSON für px.choropleth_mapbox
+plz_geojson = plz_gdf.__geo_interface__
 
 # -----------------------------
-# Karte mit choroplethmapbox
+# Karte erstellen
 fig = px.choropleth_mapbox(
     plz_gdf,
-    geojson=plz_gdf.geometry,
+    geojson=plz_geojson,
     locations=plz_gdf.index,
-    color='consultant',             # Farbe pro Consultant
+    color='consultant',
     hover_name='hover_text',
     color_discrete_map=farbe_map,
     mapbox_style="carto-positron",
@@ -79,21 +80,8 @@ fig = px.choropleth_mapbox(
     opacity=0.5
 )
 
-# Linien der Bundesländer
-bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
-for geom in bl_gdf.geometry:
-    if geom.geom_type == "Polygon":
-        lons, lats = zip(*geom.exterior.coords)
-        fig.add_trace(px.line_mapbox(
-            x=lons, y=lats
-        ).data[0])
-    elif geom.geom_type == "MultiPolygon":
-        for poly in geom.geoms:
-            lons, lats = zip(*poly.exterior.coords)
-            fig.add_trace(px.line_mapbox(
-                x=lons, y=lats
-            ).data[0])
-
+# -----------------------------
+# Layout
 fig.update_layout(
     height=800,
     width=800,
