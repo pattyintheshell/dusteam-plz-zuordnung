@@ -42,7 +42,7 @@ plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_l
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# 3) Farben (klar unterscheidbar + transparent)
+# 3) Einheitliche, transparente Farben pro Consultant
 # -----------------------------
 color_map = {
     # Gruppe 1: Blautöne
@@ -67,17 +67,16 @@ color_map = {
 categories = list(color_map.keys())
 
 # -----------------------------
-# 4) Bundesland-Zuordnung + Hover
+# 4) Bundesland-Zuordnung + Hover-Text
 # -----------------------------
 bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
 plz_with_bl = gpd.sjoin(plz_gdf, bl_gdf[['name','geometry']], how='left', predicate='intersects')
 plz_with_bl = plz_with_bl.reset_index(drop=True)
 
-# Kürzerer Hover
-plz_with_bl['hover_text'] = (
-    plz_with_bl['plz2'] + "\n" +
-    plz_with_bl['name'].fillna("Unbekannt") + "\n" +
-    plz_with_bl['consultant']
+# Hover-Text untereinander
+plz_with_bl['hover_text'] = plz_with_bl.apply(
+    lambda row: f"{row['plz2']}\n{row['name'] if row['name'] else 'Unbekannt'}\n{row['consultant']}",
+    axis=1
 )
 
 # -----------------------------
@@ -132,7 +131,7 @@ for _, row in bl_gdf.iterrows():
         ))
 
 # -----------------------------
-# 7) Layout & Map
+# 7) Layout
 # -----------------------------
 fig.update_layout(
     mapbox_style="carto-positron",
