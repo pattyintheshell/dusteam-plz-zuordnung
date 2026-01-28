@@ -47,12 +47,28 @@ plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_l
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# 3) Farben
+# 3) Transparente Farben nach Farbfamilie
 # -----------------------------
 color_map = {
-    'Dustin': '#1f77b4','Tobias': '#ff7f0e','Philipp': '#2ca02c','Vanessa': '#d62728',
-    'Patricia': '#9467bd','Kathrin': '#ffA500','Sebastian': '#e377c2','Sumak': '#17becf',
-    'Jonathan': '#bcbd22','Unassigned': '#c0c0c0'
+    # Gruppe 1: Blautöne
+    "Dustin": "rgba(31,119,180,0.5)",
+    "Patricia": "rgba(70,130,180,0.5)",
+    "Jonathan": "rgba(100,149,237,0.5)",
+
+    # Gruppe 2: Orangetöne
+    "Tobias": "rgba(255,127,14,0.5)",
+    "Kathrin": "rgba(255,165,0,0.5)",
+    "Sumak": "rgba(255,140,0,0.5)",
+
+    # Gruppe 3: Rottöne
+    "Vanessa": "rgba(214,39,40,0.5)",
+    "Sebastian": "rgba(178,34,34,0.5)",
+
+    # Gruppe 4: Grüntöne
+    "Philipp": "rgba(44,160,44,0.5)",
+
+    # Unassigned
+    "Unassigned": "rgba(200,200,200,0.5)"
 }
 categories = list(color_map.keys())
 
@@ -99,7 +115,7 @@ for consultant in categories:
         name=consultant,
         showlegend=True,
         legendgroup=consultant,
-        visible=True  # alle Consultant-Traces sichtbar, Nutzer kann währenddessen ein-/ausblenden
+        visible=True  # alle Consultant-Traces sichtbar, interaktiv
     ))
 
 # -----------------------------
