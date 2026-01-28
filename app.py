@@ -3,7 +3,6 @@ import geopandas as gpd
 import plotly.graph_objects as go
 import requests
 from io import BytesIO
-import numpy as np
 
 # -----------------------------
 st.set_page_config(layout="wide")
@@ -41,18 +40,11 @@ plz_mapping = {
     "Jonathan": ["70","72","73","89"]
 }
 
-plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_list}
+plz2_to_consultant = {p: c for c, v in plz_mapping.items() for p in v}
 plz_gdf["consultant"] = plz_gdf["plz2"].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# Hover-Text
-plz_gdf["hover_text"] = plz_gdf.apply(
-    lambda row: f"{row['plz2']} {row['consultant']}",
-    axis=1
-)
-
-# -----------------------------
-# Farben
+# Farben für Consultants
 farbe_map = {
     "Dustin": "rgba(255, 223, 0, 0.4)",
     "Patricia": "rgba(255, 0, 0, 0.4)",
@@ -67,72 +59,41 @@ farbe_map = {
 }
 
 # -----------------------------
-# Karte bauen
-fig = go.Figure()
-
-for consultant, color in farbe_map.items():
-    subset = plz_gdf[plz_gdf["consultant"] == consultant]
-    if subset.empty:
-        continue
-
-    lon_arrays, lat_arrays, text_arrays = [], [], []
-
-    for geom, hover in zip(subset.geometry, subset["hover_text"]):
-        polys = [geom] if geom.geom_type == "Polygon" else geom.geoms
-
-        for poly in polys:
-            lons, lats = zip(*poly.exterior.coords)
-            lon_arrays.append(np.concatenate([np.array(lons), [np.nan]]))
-            lat_arrays.append(np.concatenate([np.array(lats), [np.nan]]))
-            text_arrays.append(np.concatenate([np.array([hover]*len(lons)), [np.nan]]))
-
-    lon_list  = np.concatenate(lon_arrays).tolist()
-    lat_list  = np.concatenate(lat_arrays).tolist()
-    text_list = np.concatenate(text_arrays).tolist()
-
-    # ---- Flächen-Trace (Optik)
-    fig.add_trace(go.Scattermapbox(
-        lon=lon_list,
-        lat=lat_list,
-        mode="lines",
-        fill="toself",
-        fillcolor=color,
-        line=dict(color="black", width=1),
-        text=text_list,
-        hoverinfo="text",
-        name=consultant,
-        showlegend=False
-    ))
-
-    # ---- FIX: zusätzlicher unsichtbarer Hover-Trace
-    fig.add_trace(go.Scattermapbox(
-        lon=lon_list,
-        lat=lat_list,
-        mode="markers",
-        marker=dict(size=1, opacity=0),
-        text=text_list,
-        hoverinfo="text",
-        showlegend=False
-    ))
+# Numerische IDs für Choroplethmapbox
+consultants = list(farbe_map.keys())
+consultant_id = {c: i for i, c in enumerate(consultants)}
+plz_gdf["consultant_id"] = plz_gdf["consultant"].map(consultant_id)
 
 # -----------------------------
-# Dummy-Traces für Legende
-for consultant, color in farbe_map.items():
-    fig.add_trace(go.Scattermapbox(
-        lon=[None],
-        lat=[None],
-        mode="markers",
-        marker=dict(size=20, color=color),
-        name=consultant,
-        showlegend=True
-    ))
+# Choropleth-Karte
+fig = go.Figure(go.Choroplethmapbox(
+    geojson=plz_gdf.__geo_interface__,
+    locations=plz_gdf.index,
+    z=plz_gdf["consultant_id"],
+    colorscale=[  # Farben gemäß farbe_map
+        [0.0, farbe_map["Dustin"]],
+        [0.1, farbe_map["Patricia"]],
+        [0.2, farbe_map["Jonathan"]],
+        [0.3, farbe_map["Philipp"]],
+        [0.4, farbe_map["Tobias"]],
+        [0.5, farbe_map["Kathrin"]],
+        [0.6, farbe_map["Sumak"]],
+        [0.7, farbe_map["Vanessa"]],
+        [0.8, farbe_map["Sebastian"]],
+        [0.9, farbe_map["Unassigned"]],
+        [1.0, farbe_map["Unassigned"]]
+    ],
+    marker_line_width=0.5,
+    hovertext=plz_gdf["plz2"] + " " + plz_gdf["consultant"],
+    hoverinfo="text",
+    showscale=False
+))
 
 # -----------------------------
-# Bundesländer-Grenzen
+# Bundesländer-Grenzen hinzufügen
 bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
-
 for geom in bl_gdf.geometry:
-    polys = [geom] if geom.geom_type == "Polygon" else geom.geoms
+    polys = [geom] if geom.geom_type=="Polygon" else geom.geoms
     for poly in polys:
         lons, lats = zip(*poly.exterior.coords)
         fig.add_trace(go.Scattermapbox(
@@ -145,41 +106,4 @@ for geom in bl_gdf.geometry:
         ))
 
 # -----------------------------
-# Legenden-Reihenfolge
-legend_order = sorted([c for c in farbe_map.keys() if c != "Unassigned"]) + ["Unassigned"]
-
-fig.update_layout(
-    mapbox_style="carto-positron",
-    mapbox_zoom=5,
-    mapbox_center={"lat": 51.0, "lon": 10.0},
-    height=800,
-    width=800,
-    legend=dict(
-        title=dict(
-            text="Consultants",
-            font=dict(size=20, family="Arial, sans-serif", color="black")
-        ),
-        font=dict(size=16, color="black"),
-        bgcolor="rgba(255, 255, 255, 0.85)",
-        bordercolor="rgba(0,0,0,0.2)",
-        borderwidth=1,
-        tracegroupgap=10,
-        x=0.99,
-        y=0.99,
-        xanchor="right",
-        yanchor="top",
-        traceorder="normal"
-    )
-)
-
-# Sortierung der Legendeneinträge
-new_order = []
-for name in legend_order:
-    for trace in fig.data:
-        if trace.name == name and trace.showlegend:
-            new_order.append(trace)
-
-fig.data = tuple([t for t in fig.data if not t.showlegend] + new_order)
-
-# -----------------------------
-st.plotly_chart(fig, use_container_width=False)
+# Layout und
