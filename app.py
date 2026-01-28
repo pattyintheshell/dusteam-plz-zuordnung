@@ -3,7 +3,6 @@ import geopandas as gpd
 import plotly.graph_objects as go
 import requests
 from io import BytesIO
-from shapely.geometry import Polygon, MultiPolygon
 
 # -----------------------------
 # 0) Titel
@@ -49,23 +48,15 @@ plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassign
 # 3) Farben pro Consultant
 # -----------------------------
 color_map = {
-    # Blau-Familie
     "Dustin": "rgba(31,119,180,0.5)",
     "Patricia": "rgba(70,130,180,0.5)",
     "Jonathan": "rgba(173,216,230,0.5)",
-
-    # Orange-Familie
     "Tobias": "rgba(255,127,14,0.5)",
     "Kathrin": "rgba(255,165,0,0.5)",
     "Sumak": "rgba(255,200,0,0.5)",
-
-    # Rot-Familie
     "Vanessa": "rgba(214,39,40,0.5)",
     "Sebastian": "rgba(178,34,34,0.5)",
-
-    # Grün-Familie
     "Philipp": "rgba(44,160,44,0.5)",
-
     "Unassigned": "rgba(200,200,200,0.5)"
 }
 categories = list(color_map.keys())
@@ -92,25 +83,16 @@ for consultant in categories:
     if subset.empty:
         continue
 
-    # Alle Polygone sammeln
-    all_polys = []
-    hover_texts = []
-    for geom, hover_text in zip(subset.geometry, subset['hover_text']):
-        if geom.geom_type == "Polygon":
-            all_polys.append(geom)
-            hover_texts.append(hover_text)
-        elif geom.geom_type == "MultiPolygon":
-            for poly in geom.geoms:
-                all_polys.append(poly)
-                hover_texts.append(hover_text)
-
-    # EIN Trace pro Consultant
     lon_list, lat_list, text_list = [], [], []
-    for poly, hover_text in zip(all_polys, hover_texts):
-        lons, lats = zip(*poly.exterior.coords)
-        lon_list.extend(lons + (None,))
-        lat_list.extend(lats + (None,))
-        text_list.extend([hover_text] * len(lons) + [None])
+
+    for geom, hover_text in zip(subset.geometry, subset['hover_text']):
+        # MultiPolygon auftrennen
+        polygons = [geom] if geom.geom_type=='Polygon' else geom.geoms
+        for poly in polygons:
+            lons, lats = zip(*poly.exterior.coords)
+            lon_list.extend(lons + (None,))
+            lat_list.extend(lats + (None,))
+            text_list.extend([hover_text]*len(lons) + [None])
 
     fig.add_trace(go.Scattermapbox(
         lon=lon_list,
