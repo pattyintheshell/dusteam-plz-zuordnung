@@ -49,7 +49,7 @@ plz_gdf['hover_text'] = plz_gdf.apply(
 # -----------------------------
 # Farben pro Consultant (RGBA, transparent)
 farbe_map = {
-    "Dustin": "rgba(255, 223, 0, 0.4)",      # Gelb
+    "Dustin": "rgba(255, 223, 0, 0.4)",       # Gelb
     "Patricia": "rgba(255, 0, 0, 0.4)",       # Rot
     "Jonathan": "rgba(255, 102, 0, 0.4)",     # Orange
     "Philipp": "rgba(30, 144, 255, 0.4)",     # Blau
@@ -57,7 +57,7 @@ farbe_map = {
     "Kathrin": "rgba(186, 85, 211, 0.4)",     # Helles Lila
     "Sumak": "rgba(0, 206, 209, 0.4)",        # Cyan/Türkis
     "Vanessa": "rgba(255, 20, 147, 0.4)",     # Kräftiges Pink
-    "Sebastian": "rgba(144, 238, 144, 0.4)",  # Hellgrün
+    "Sebastian": "rgba(120, 220, 120, 0.4)",  # Hellgrün minimal dunkler
     "Unassigned": "rgba(200, 200, 200, 0.4)"  # Grau
 }
 
