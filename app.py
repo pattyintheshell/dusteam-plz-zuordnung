@@ -40,20 +40,9 @@ plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_l
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# Bundesländer in PLZ-GDF übernehmen
-bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
-plz_gdf['bundesland'] = None
-
-for idx, plz_row in plz_gdf.iterrows():
-    for bl_idx, bl_row in bl_gdf.iterrows():
-        if plz_row.geometry.intersects(bl_row.geometry):
-            plz_gdf.at[idx, 'bundesland'] = bl_row['name']  # 'name' = Bundesland-Name
-            break
-
-# -----------------------------
-# Hover-Text pro PLZ (untereinander)
+# Hover-Text pro PLZ (nur PLZ2 und Consultant)
 plz_gdf['hover_text'] = plz_gdf.apply(
-    lambda row: f"{row['plz2']}\n{row['bundesland']}\n{row['consultant']}",
+    lambda row: f"{row['plz2']} {row['consultant']}",
     axis=1
 )
 
@@ -121,6 +110,7 @@ for consultant, color in farbe_map.items():
 
 # -----------------------------
 # Bundesländer-Linien
+bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
 for geom in bl_gdf.geometry:
     polys = [geom] if geom.geom_type=='Polygon' else geom.geoms
     for poly in polys:
