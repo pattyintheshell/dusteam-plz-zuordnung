@@ -39,26 +39,22 @@ plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_l
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# Farben deutlich unterscheidbar, dunkler Ton innerhalb Familie, transparent
+# Stark unterscheidbare Farben (transparent)
 farbe_map = {
-    # Blau-Familie
-    "Dustin": "rgba(31,119,180,0.4)",        # mittelblau
-    "Patricia": "rgba(0,102,204,0.4)",       # dunkler
-    "Jonathan": "rgba(102,178,255,0.4)",     # heller
-    
-    # Grün-Familie (war Orange)
-    "Tobias": "rgba(44,160,44,0.4)",         # mittelgrün
-    "Kathrin": "rgba(0,128,0,0.4)",          # dunkler
-    "Sumak": "rgba(144,238,144,0.4)",        # heller
-    
-    # Lila/Pink-Familie (Vanessa Pink, Sebastian Lila)
-    "Vanessa": "rgba(255,20,147,0.4)",       # Pink
-    "Sebastian": "rgba(148,0,211,0.4)",      # Lila
-    
-    # Orange-Familie (war Grün)
-    "Philipp": "rgba(255,127,14,0.4)",       # Orange
-    
-    "Unassigned": "rgba(200,200,200,0.4)"
+    "Dustin": "rgba(0,102,204,0.4)",      # kräftiges Blau
+    "Patricia": "rgba(0,51,102,0.4)",     # dunkleres Blau
+    "Jonathan": "rgba(102,178,255,0.4)",  # helles Blau
+
+    "Tobias": "rgba(0,153,0,0.4)",        # sattes Grün
+    "Kathrin": "rgba(51,204,51,0.4)",     # helles Grün
+    "Sumak": "rgba(0,102,0,0.4)",         # dunkleres Grün
+
+    "Vanessa": "rgba(255,20,147,0.4)",    # Pink
+    "Sebastian": "rgba(148,0,211,0.4)",   # Lila
+
+    "Philipp": "rgba(255,127,14,0.4)",    # kräftiges Orange
+
+    "Unassigned": "rgba(200,200,200,0.4)" # Grau
 }
 
 # -----------------------------
@@ -68,12 +64,12 @@ plz_with_bl = gpd.sjoin(plz_gdf, bl_gdf[['name','geometry']], how='left', predic
 plz_with_bl = plz_with_bl.reset_index(drop=True)
 
 # -----------------------------
-# Performance-Optimierung: Polygone vereinfachen
-plz_with_bl['geometry'] = plz_with_bl['geometry'].simplify(tolerance=0.01, preserve_topology=True)
-bl_gdf['geometry'] = bl_gdf['geometry'].simplify(tolerance=0.01, preserve_topology=True)
+# Polygon-Vereinfachung für Performance
+plz_with_bl['geometry'] = plz_with_bl['geometry'].simplify(tolerance=0.05, preserve_topology=True)
+bl_gdf['geometry'] = bl_gdf['geometry'].simplify(tolerance=0.05, preserve_topology=True)
 
 # -----------------------------
-# Hover-Text untereinander: PLZ, Bundesland, Consultant
+# Hover-Text untereinander
 plz_with_bl['hover_text'] = plz_with_bl.apply(
     lambda row: f"{row['plz2']}<br>{row['name'] if row['name'] else 'Unbekannt'}<br>{row['consultant']}",
     axis=1
@@ -82,7 +78,7 @@ plz_with_bl['hover_text'] = plz_with_bl.apply(
 # -----------------------------
 fig = go.Figure()
 
-# 2er-PLZ Gebiete
+# 2er-PLZ Gebiete zeichnen
 for consultant in plz_with_bl['consultant'].unique():
     subset = plz_with_bl[plz_with_bl['consultant'] == consultant]
     if subset.empty:
