@@ -4,6 +4,9 @@ import plotly.graph_objects as go
 import requests
 from io import BytesIO
 
+# -----------------------------
+# Streamlit Setup
+# -----------------------------
 st.set_page_config(layout="wide")
 st.title("🗺️ Marktaufteilung Dusteam")
 
@@ -67,7 +70,7 @@ plz_with_bl['hover_text'] = (
 )
 
 # -----------------------------
-# 5) Karte bauen: 1 Trace pro Consultant
+# 5) Karte bauen: 1 Trace pro Consultant, interaktive Legende
 # -----------------------------
 fig = go.Figure()
 
@@ -95,11 +98,12 @@ for consultant in categories:
         text=texts_all,
         name=consultant,
         showlegend=True,
-        legendgroup=consultant
+        legendgroup=consultant,
+        visible=True  # alle Consultant-Traces sichtbar, Nutzer kann währenddessen ein-/ausblenden
     ))
 
 # -----------------------------
-# 6) Bundesländer als Linien
+# 6) Bundesländer als Linien (immer sichtbar)
 # -----------------------------
 for _, row in bl_gdf.iterrows():
     geom = row.geometry
@@ -112,7 +116,8 @@ for _, row in bl_gdf.iterrows():
             mode='lines',
             line=dict(color='black', width=2),
             hoverinfo='skip',
-            showlegend=False
+            showlegend=False,
+            visible=True
         ))
 
 # -----------------------------
@@ -140,4 +145,3 @@ fig.update_layout(
 )
 
 st.plotly_chart(fig, use_container_width=True)
-
