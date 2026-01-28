@@ -46,7 +46,7 @@ plz_with_bl = gpd.sjoin(plz_gdf, bl_gdf[['name','geometry']], how='left', predic
 plz_with_bl = plz_with_bl.reset_index(drop=True)
 
 # -----------------------------
-# Hover-Text pro PLZ untereinander
+# Hover-Text pro PLZ untereinander (nur diese Zeile geändert)
 plz_with_bl['hover_text'] = plz_with_bl.apply(
     lambda row: f"{row['plz2']}\n{row['name'] if row['name'] else 'Unbekannt'}\n{row['consultant']}",
     axis=1
@@ -55,20 +55,20 @@ plz_with_bl['hover_text'] = plz_with_bl.apply(
 # -----------------------------
 # Farben pro Consultant (transparent)
 farbe_map = {
-    "Dustin": "rgba(255, 223, 0, 0.4)",       # Gelb
-    "Patricia": "rgba(255, 0, 0, 0.4)",       # Rot
-    "Jonathan": "rgba(255, 102, 0, 0.4)",     # Orange
-    "Philipp": "rgba(30, 144, 255, 0.4)",     # Blau
-    "Tobias": "rgba(0, 100, 0, 0.4)",         # Dunkleres Grün
-    "Kathrin": "rgba(186, 85, 211, 0.4)",     # Helles Lila
-    "Sumak": "rgba(0, 206, 209, 0.4)",        # Cyan/Türkis
-    "Vanessa": "rgba(255, 0, 180, 0.4)",      # Kräftiges Magenta
-    "Sebastian": "rgba(110, 210, 110, 0.4)",  # Hellgrün minimal dunkler
-    "Unassigned": "rgba(200, 200, 200, 0.4)"  # Grau
+    "Dustin": "rgba(255, 223, 0, 0.4)",
+    "Patricia": "rgba(255, 0, 0, 0.4)",
+    "Jonathan": "rgba(255, 102, 0, 0.4)",
+    "Philipp": "rgba(30, 144, 255, 0.4)",
+    "Tobias": "rgba(0, 100, 0, 0.4)",
+    "Kathrin": "rgba(186, 85, 211, 0.4)",
+    "Sumak": "rgba(0, 206, 209, 0.4)",
+    "Vanessa": "rgba(255, 0, 180, 0.4)",
+    "Sebastian": "rgba(110, 210, 110, 0.4)",
+    "Unassigned": "rgba(200, 200, 200, 0.4)"
 }
 
 # -----------------------------
-# Karte bauen: EIN Trace pro Consultant
+# Karte bauen: EIN Trace pro Consultant (alles wie vorher stabil)
 fig = go.Figure()
 
 for consultant, color in farbe_map.items():
