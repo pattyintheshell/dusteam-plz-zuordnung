@@ -52,7 +52,7 @@ plz_gdf["hover_text"] = plz_gdf.apply(
 )
 
 # -----------------------------
-# Farben (RGBA)
+# Farben
 farbe_map = {
     "Dustin": "rgba(255, 223, 0, 0.4)",
     "Patricia": "rgba(255, 0, 0, 0.4)",
@@ -86,16 +86,32 @@ for consultant, color in farbe_map.items():
             lat_arrays.append(np.concatenate([np.array(lats), [np.nan]]))
             text_arrays.append(np.concatenate([np.array([hover]*len(lons)), [np.nan]]))
 
+    lon_list  = np.concatenate(lon_arrays).tolist()
+    lat_list  = np.concatenate(lat_arrays).tolist()
+    text_list = np.concatenate(text_arrays).tolist()
+
+    # ---- Flächen-Trace (Optik)
     fig.add_trace(go.Scattermapbox(
-        lon=np.concatenate(lon_arrays).tolist(),
-        lat=np.concatenate(lat_arrays).tolist(),
+        lon=lon_list,
+        lat=lat_list,
         mode="lines",
         fill="toself",
         fillcolor=color,
         line=dict(color="black", width=1),
-        text=np.concatenate(text_arrays).tolist(),
+        text=text_list,
         hoverinfo="text",
         name=consultant,
+        showlegend=False
+    ))
+
+    # ---- FIX: zusätzlicher unsichtbarer Hover-Trace
+    fig.add_trace(go.Scattermapbox(
+        lon=lon_list,
+        lat=lat_list,
+        mode="markers",
+        marker=dict(size=1, opacity=0),
+        text=text_list,
+        hoverinfo="text",
         showlegend=False
     ))
 
@@ -144,7 +160,7 @@ fig.update_layout(
             font=dict(size=20, family="Arial, sans-serif", color="black")
         ),
         font=dict(size=16, color="black"),
-        bgcolor="rgba(255, 255, 255, 0.85)",   # 👈 FIX: immer weiß / leicht transparent
+        bgcolor="rgba(255, 255, 255, 0.85)",
         bordercolor="rgba(0,0,0,0.2)",
         borderwidth=1,
         tracegroupgap=10,
