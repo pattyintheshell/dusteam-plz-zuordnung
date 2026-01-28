@@ -1,37 +1,29 @@
 import streamlit as st
 import geopandas as gpd
-import pydeck as pdk
+import plotly.graph_objects as go
 import requests
 from io import BytesIO
-import json
 
-# -----------------------------
-# Streamlit Setup
-# -----------------------------
 st.set_page_config(layout="wide")
 st.title("🗺️ Marktaufteilung Dusteam")
 
 # -----------------------------
-# Helper: GeoJSON aus GitHub Release laden
-# -----------------------------
-def load_geojson_from_github(url: str) -> gpd.GeoDataFrame:
-    headers = {"User-Agent": "streamlit-app"}
-    response = requests.get(url, headers=headers, timeout=30)
-    if response.status_code != 200:
-        st.error(f"GeoJSON konnte nicht geladen werden ({response.status_code})")
-        st.stop()
-    return gpd.read_file(BytesIO(response.content))
-
-# -----------------------------
 # 1) GeoJSON laden
 # -----------------------------
+def load_geojson(url: str) -> gpd.GeoDataFrame:
+    r = requests.get(url)
+    if r.status_code != 200:
+        st.error(f"Fehler beim Laden: {r.status_code}")
+        st.stop()
+    return gpd.read_file(BytesIO(r.content))
+
 PLZ_URL = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/releases/download/v1.0-plz/plz_deutschland.geojson"
 BL_URL  = "https://github.com/pattyintheshell/dusteam-plz-zuordnung/releases/download/v1.0-bundeslaender/bundeslaender_deutschland.geojson"
 
-plz_gdf = load_geojson_from_github(PLZ_URL)
-bl_gdf  = load_geojson_from_github(BL_URL)
+plz_gdf = load_geojson(PLZ_URL)
+bl_gdf  = load_geojson(BL_URL)
 
-plz_gdf["plz2"] = plz_gdf["plz"].astype(str).str[:2]
+plz_gdf['plz2'] = plz_gdf['plz'].astype(str).str[:2]
 
 # -----------------------------
 # 2) Consultant Mapping
@@ -49,103 +41,103 @@ plz_mapping = {
 }
 
 plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_list}
-plz_gdf["consultant"] = plz_gdf["plz2"].map(plz2_to_consultant).fillna("Unassigned")
+plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# 3) Farben (RGB), Braun ersetzt durch Orange
+# 3) Farben
 # -----------------------------
 color_map = {
-    "Dustin": [31,119,180],
-    "Tobias": [255,127,14],
-    "Philipp": [44,160,44],
-    "Vanessa": [214,39,40],
-    "Patricia": [148,103,189],
-    "Kathrin": [255,165,0],  # Braun ersetzt
-    "Sebastian": [227,119,194],
-    "Sumak": [23,190,207],
-    "Jonathan": [188,189,34],
-    "Unassigned": [200,200,200]
+    'Dustin': '#1f77b4','Tobias': '#ff7f0e','Philipp': '#2ca02c','Vanessa': '#d62728',
+    'Patricia': '#9467bd','Kathrin': '#ffA500','Sebastian': '#e377c2','Sumak': '#17becf',
+    'Jonathan': '#bcbd22','Unassigned': '#c0c0c0'
 }
-plz_gdf["fill_color"] = plz_gdf["consultant"].map(color_map)
+categories = list(color_map.keys())
 
 # -----------------------------
-# 4) Bundesland-Zuordnung für Tooltip
+# 4) Bundesland-Zuordnung für Hover
 # -----------------------------
 bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
+plz_with_bl = gpd.sjoin(plz_gdf, bl_gdf[['name','geometry']], how='left', predicate='intersects')
+plz_with_bl = plz_with_bl.reset_index(drop=True)
 
-# Spatial Join
-plz_gdf_with_bl = gpd.sjoin(plz_gdf, bl_gdf[['name','geometry']], how='left', predicate='intersects')
-plz_gdf_with_bl = plz_gdf_with_bl.reset_index(drop=True)  # ❌ Verhindert Index-Duplikate
-plz_gdf = plz_gdf_with_bl.copy()
-
-# Tooltip Spalte
-plz_gdf['tooltip_text'] = (
-    "PLZ: " + plz_gdf['plz2'] +
-    "<br>Consultant: " + plz_gdf['consultant'] +
-    "<br>Bundesland: " + plz_gdf['name'].fillna("Unbekannt")
+plz_with_bl['hover_text'] = (
+    "PLZ: " + plz_with_bl['plz2'] +
+    "<br>Consultant: " + plz_with_bl['consultant'] +
+    "<br>Bundesland: " + plz_with_bl['name'].fillna("Unbekannt")
 )
 
 # -----------------------------
-# 5) Farben & Tooltip in GeoJSON
+# 5) Karte bauen: 1 Trace pro Consultant
 # -----------------------------
-plz_geojson = json.loads(plz_gdf.to_json())
-for i, feature in enumerate(plz_geojson["features"]):
-    feature["properties"]["fill_color"] = plz_gdf.loc[i, "fill_color"]
-    feature["properties"]["tooltip_text"] = plz_gdf.loc[i, "tooltip_text"]
+fig = go.Figure()
+
+for consultant in categories:
+    subset = plz_with_bl[plz_with_bl['consultant']==consultant]
+    lons_all, lats_all, texts_all = [], [], []
+
+    for _, row in subset.iterrows():
+        geom = row.geometry
+        polys = [geom] if geom.geom_type=='Polygon' else geom.geoms
+        for poly in polys:
+            lons, lats = zip(*poly.exterior.coords)
+            lons_all.extend(lons + (None,))
+            lats_all.extend(lats + (None,))
+            texts_all.extend([row['hover_text']]*len(lons)+[None])
+
+    fig.add_trace(go.Scattermapbox(
+        lon=lons_all,
+        lat=lats_all,
+        mode='lines',
+        fill='toself',
+        fillcolor=color_map[consultant],
+        line=dict(color='black', width=1),
+        hoverinfo='text',
+        text=texts_all,
+        name=consultant,
+        showlegend=True,
+        legendgroup=consultant
+    ))
 
 # -----------------------------
-# 6) Pydeck Layers
+# 6) Bundesländer als Linien
 # -----------------------------
-plz_layer = pdk.Layer(
-    "GeoJsonLayer",
-    data=plz_geojson,
-    get_fill_color="properties.fill_color",
-    get_line_color=[0,0,0],
-    line_width_min_pixels=1,
-    pickable=True,
-    auto_highlight=True,
-    tooltip={"html": "{tooltip_text}"}
-)
-
-bl_layer = pdk.Layer(
-    "GeoJsonLayer",
-    data=bl_gdf,
-    get_fill_color=[0,0,0,0],
-    get_line_color=[0,0,0],
-    line_width_min_pixels=2,
-    pickable=False
-)
+for _, row in bl_gdf.iterrows():
+    geom = row.geometry
+    polys = [geom] if geom.geom_type=='Polygon' else geom.geoms
+    for poly in polys:
+        lons, lats = zip(*poly.exterior.coords)
+        fig.add_trace(go.Scattermapbox(
+            lon=lons,
+            lat=lats,
+            mode='lines',
+            line=dict(color='black', width=2),
+            hoverinfo='skip',
+            showlegend=False
+        ))
 
 # -----------------------------
-# 7) ViewState: Europa sichtbar
+# 7) Layout
 # -----------------------------
-view_state = pdk.ViewState(
-    latitude=51.0,
-    longitude=10.0,
-    zoom=4.5,
-    min_zoom=3,
-    max_zoom=8
-)
-
-deck = pdk.Deck(
-    layers=[plz_layer, bl_layer],
-    initial_view_state=view_state,
-    map_style="mapbox://styles/mapbox/light-v9"
-)
-
-st.pydeck_chart(deck, use_container_width=True)
-
-# -----------------------------
-# 8) Rechte, vertikale Legende über Karte
-# -----------------------------
-legend_html = "<div style='position:absolute; top:20px; right:20px; background:white; padding:10px; border:1px solid black; z-index:999;'>"
-legend_html += "<b>Consultants</b><br><br>"
-for name, rgb in color_map.items():
-    legend_html += (
-        f"<div style='display:flex; align-items:center; margin-bottom:4px;'>"
-        f"<div style='width:15px; height:15px; background-color:rgb{tuple(rgb)}; margin-right:8px;'></div>"
-        f"{name}</div>"
+fig.update_layout(
+    mapbox_style="carto-positron",
+    mapbox_zoom=5,
+    mapbox_center={"lat":51.0,"lon":10.0},
+    height=1000,
+    legend=dict(
+        title="Consultants",
+        title_font=dict(color="black", size=20, family="Arial Black"),
+        font=dict(color="black", size=16),
+        bgcolor="white",
+        bordercolor="black",
+        borderwidth=2,
+        x=0.99,
+        y=0.99,
+        xanchor="right",
+        yanchor="top",
+        traceorder="normal",
+        orientation="v"
     )
-legend_html += "</div>"
+)
 
-st.markdown(legend_html, unsafe_allow_html=True)
+st.plotly_chart(fig, use_container_width=True)
+
