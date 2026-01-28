@@ -45,7 +45,7 @@ bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
 plz_with_bl = gpd.sjoin(plz_gdf, bl_gdf[['name','geometry']], how='left', predicate='intersects')
 plz_with_bl = plz_with_bl.reset_index(drop=True)
 
-# Hover-Text pro PLZ (untereinander)
+# Hover-Text untereinander
 plz_with_bl['hover_text'] = plz_with_bl.apply(
     lambda row: f"{row['plz2']}\n{row['name'] if row['name'] else 'Unbekannt'}\n{row['consultant']}",
     axis=1
@@ -70,7 +70,6 @@ farbe_map = {
 # Karte bauen: EIN Trace pro Consultant
 fig = go.Figure()
 
-# Flächen-Trace
 for consultant, color in farbe_map.items():
     subset = plz_with_bl[plz_with_bl['consultant'] == consultant]
     if subset.empty:
@@ -103,7 +102,7 @@ for consultant, color in farbe_map.items():
         showlegend=False
     ))
 
-# Dummy-Traces für Legende (exakte Farbe, größere Marker)
+# Dummy-Traces für Legende
 for consultant, color in farbe_map.items():
     fig.add_trace(go.Scattermapbox(
         lon=[None], lat=[None],
@@ -129,7 +128,7 @@ for geom in bl_gdf.geometry:
         ))
 
 # -----------------------------
-# Layout: alphabetische Legende, Unassigned am Ende
+# Layout & alphabetische Legende
 legend_order = sorted([c for c in farbe_map.keys() if c != "Unassigned"]) + ["Unassigned"]
 
 fig.update_layout(
@@ -150,7 +149,7 @@ fig.update_layout(
     )
 )
 
-# Sortiere Dummy-Traces für Legende alphabetisch
+# Dummy-Traces sortieren
 new_order = []
 for name in legend_order:
     for trace in fig.data:
