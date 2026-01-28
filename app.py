@@ -5,13 +5,9 @@ import requests
 from io import BytesIO
 
 # -----------------------------
-# 0) Titel
-# -----------------------------
 st.set_page_config(layout="wide")
 st.title("🗺️ Marktaufteilung DE Perm Embedded Team")
 
-# -----------------------------
-# 1) GeoJSON laden
 # -----------------------------
 def load_geojson(url: str) -> gpd.GeoDataFrame:
     r = requests.get(url)
@@ -28,8 +24,6 @@ bl_gdf  = load_geojson(BL_URL)
 plz_gdf['plz2'] = plz_gdf['plz'].astype(str).str[:2]
 
 # -----------------------------
-# 2) Consultant Zuordnung
-# -----------------------------
 plz_mapping = {
     "Dustin": ["77","78","79","88"],
     "Tobias": ["81","82","83","84"],
@@ -45,23 +39,19 @@ plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_l
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# 3) Neue, deutlich unterscheidbare transparente Farben pro Consultant
-# -----------------------------
 farbe_map = {
-    "Dustin": "rgba(31,119,180,0.4)",      # kräftiges Blau, transparent
-    "Patricia": "rgba(0,162,232,0.4)",     # helles Blau
-    "Jonathan": "rgba(102,204,255,0.4)",   # hellstes Blau
-    "Tobias": "rgba(255,127,14,0.4)",      # kräftiges Orange
-    "Kathrin": "rgba(255,178,102,0.4)",    # helleres Orange
-    "Sumak": "rgba(255,210,120,0.4)",      # sehr helles Orange
-    "Vanessa": "rgba(214,39,40,0.4)",      # kräftiges Rot
-    "Sebastian": "rgba(255,99,92,0.4)",    # helleres Rot
-    "Philipp": "rgba(44,160,44,0.4)",      # Grün
-    "Unassigned": "rgba(200,200,200,0.4)"  # Grau
+    "Dustin": "rgba(31,119,180,0.4)",
+    "Patricia": "rgba(0,162,232,0.4)",
+    "Jonathan": "rgba(102,204,255,0.4)",
+    "Tobias": "rgba(255,127,14,0.4)",
+    "Kathrin": "rgba(255,178,102,0.4)",
+    "Sumak": "rgba(255,210,120,0.4)",
+    "Vanessa": "rgba(214,39,40,0.4)",
+    "Sebastian": "rgba(255,99,92,0.4)",
+    "Philipp": "rgba(44,160,44,0.4)",
+    "Unassigned": "rgba(200,200,200,0.4)"
 }
 
-# -----------------------------
-# 4) Hover-Text
 # -----------------------------
 plz_gdf['hover_text'] = plz_gdf.apply(
     lambda row: f"PLZ: {row['plz2']}<br>Consultant: {row['consultant']}",
@@ -69,10 +59,7 @@ plz_gdf['hover_text'] = plz_gdf.apply(
 )
 
 # -----------------------------
-# 5) Karte: Scattermapbox pro PLZ-Gebiet
-# -----------------------------
 fig = go.Figure()
-
 for consultant in plz_gdf['consultant'].unique():
     subset = plz_gdf[plz_gdf['consultant'] == consultant]
     if subset.empty:
@@ -91,13 +78,9 @@ for consultant in plz_gdf['consultant'].unique():
                 line=dict(color='black', width=1),
                 hoverinfo='text',
                 text=[hover]*len(lons),
-                name=consultant,       # Legende einmal pro Consultant
-                legendgroup=consultant, 
-                showlegend=True
+                showlegend=False  # KEINE automatische Legende mehr
             ))
 
-# -----------------------------
-# 6) Bundesländer Linien
 # -----------------------------
 bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
 for _, row in bl_gdf.iterrows():
@@ -115,23 +98,29 @@ for _, row in bl_gdf.iterrows():
         ))
 
 # -----------------------------
-# 7) Layout
-# -----------------------------
 fig.update_layout(
     mapbox_style="carto-positron",
     mapbox_zoom=5,
     mapbox_center={"lat": 51.0, "lon": 10.0},
-    height=1000,
-    legend=dict(
-        title="Consultants",
-        yanchor="top",
-        y=0.99,
-        xanchor="right",
-        x=0.99,
-        bgcolor="white",
-        bordercolor="black",
-        borderwidth=1
-    )
+    height=1000
 )
 
 st.plotly_chart(fig, use_container_width=True)
+
+# -----------------------------
+# 8) Manuelle Legende oben rechts
+st.markdown("""
+<div style="position: absolute; top: 10px; right: 10px; background-color:white; padding:10px; border:1px solid black;">
+<strong>Consultants</strong><br>
+<span style="display:inline-block;width:20px;height:20px;background-color:rgba(31,119,180,0.4);margin-right:5px;"></span>Dustin<br>
+<span style="display:inline-block;width:20px;height:20px;background-color:rgba(0,162,232,0.4);margin-right:5px;"></span>Patricia<br>
+<span style="display:inline-block;width:20px;height:20px;background-color:rgba(102,204,255,0.4);margin-right:5px;"></span>Jonathan<br>
+<span style="display:inline-block;width:20px;height:20px;background-color:rgba(255,127,14,0.4);margin-right:5px;"></span>Tobias<br>
+<span style="display:inline-block;width:20px;height:20px;background-color:rgba(255,178,102,0.4);margin-right:5px;"></span>Kathrin<br>
+<span style="display:inline-block;width:20px;height:20px;background-color:rgba(255,210,120,0.4);margin-right:5px;"></span>Sumak<br>
+<span style="display:inline-block;width:20px;height:20px;background-color:rgba(214,39,40,0.4);margin-right:5px;"></span>Vanessa<br>
+<span style="display:inline-block;width:20px;height:20px;background-color:rgba(255,99,92,0.4);margin-right:5px;"></span>Sebastian<br>
+<span style="display:inline-block;width:20px;height:20px;background-color:rgba(44,160,44,0.4);margin-right:5px;"></span>Philipp<br>
+<span style="display:inline-block;width:20px;height:20px;background-color:rgba(200,200,200,0.4);margin-right:5px;"></span>Unassigned
+</div>
+""", unsafe_allow_html=True)
