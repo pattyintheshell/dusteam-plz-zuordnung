@@ -1,6 +1,7 @@
 import streamlit as st
 import geopandas as gpd
 import plotly.graph_objects as go
+import plotly.colors as pc
 import requests
 from io import BytesIO
 
@@ -39,23 +40,18 @@ plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_l
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# Einheitliche, stark unterscheidbare Farben pro Consultant
-farbe_map = {
-    "Dustin": "rgba(0,102,204,0.4)",      
-    "Patricia": "rgba(0,51,102,0.4)",     
-    "Jonathan": "rgba(102,178,255,0.4)",  
-
-    "Tobias": "rgba(0,153,0,0.4)",        
-    "Kathrin": "rgba(51,204,51,0.4)",     
-    "Sumak": "rgba(0,102,0,0.4)",         
-
-    "Vanessa": "rgba(255,20,147,0.4)",    
-    "Sebastian": "rgba(148,0,211,0.4)",   
-
-    "Philipp": "rgba(255,127,14,0.4)",    
-
-    "Unassigned": "rgba(200,200,200,0.4)"
-}
+# Automatische Farbauswahl: maximal unterscheidbare Farben
+consultants = [c for c in plz_mapping.keys()]
+base_colors = pc.qualitative.Plotly  # 10 Farben Basis
+# Wenn mehr Consultants als Basisfarben, wiederholen, aber leicht abgedunkelt
+farbe_map = {}
+for i, c in enumerate(consultants):
+    color = base_colors[i % len(base_colors)]
+    # Dunkler für Wiederholungen
+    factor = 0.7 ** (i // len(base_colors))
+    r, g, b = [int(int(x,16)*factor) if isinstance(x,str) else int(x*factor) for x in [color[1:3], color[3:5], color[5:7]]]
+    farbe_map[c] = f"rgba({r},{g},{b},0.4)"
+farbe_map["Unassigned"] = "rgba(200,200,200,0.4)"
 
 # -----------------------------
 # Bundesländer joinen
@@ -76,18 +72,17 @@ plz_with_bl['hover_text'] = plz_with_bl.apply(
 )
 
 # -----------------------------
-# Layout: Streamlit Spalten, Karte links, Legende rechts
+# Layout: Streamlit Spalten
 col1, col2 = st.columns([3,1])
 
 with col1:
     fig = go.Figure()
-
-    # 2er-PLZ Gebiete zeichnen
+    
+    # 2er-PLZ Gebiete
     for consultant in plz_with_bl['consultant'].unique():
         subset = plz_with_bl[plz_with_bl['consultant'] == consultant]
         if subset.empty:
             continue
-        
         for geom, hover in zip(subset.geometry, subset.hover_text):
             polys = [geom] if geom.geom_type=="Polygon" else geom.geoms
             for poly in polys:
@@ -133,4 +128,7 @@ with col2:
     st.subheader("Consultants")
     for consultant, color in farbe_map.items():
         if consultant != "Unassigned":
-            st.markdown(f"<span style='display:inline-block;width:20px;height:20px;background-color:{color};margin-right:5px;'></span>{consultant}", unsafe_allow_html=True)
+            st.markdown(
+                f"<span style='display:inline-block;width:20px;height:20px;background-color:{color};margin-right:5px;'></span>{consultant}",
+                unsafe_allow_html=True
+            )
