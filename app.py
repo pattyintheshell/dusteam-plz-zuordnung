@@ -40,7 +40,7 @@ plz2_to_consultant = {p: c for c, plz_list in plz_mapping.items() for p in plz_l
 plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassigned")
 
 # -----------------------------
-# Farben pro Consultant
+# Farben pro Consultant (klar, transparent)
 farbe_map = {
     "Dustin": "rgba(31,119,180,0.5)",     # Blau
     "Patricia": "rgba(255,127,14,0.5)",   # Orange
@@ -51,7 +51,7 @@ farbe_map = {
     "Vanessa": "rgba(255,187,120,0.5)",   # Hellorange
     "Sebastian": "rgba(23,190,207,0.5)",  # Cyan
     "Philipp": "rgba(127,127,0,0.5)",     # Gelb/Olive
-    "Unassigned": "rgba(200,200,200,0.3)" # Grau nur für Unassigned
+    "Unassigned": "rgba(200,200,200,0.3)" # Grau
 }
 
 # -----------------------------
@@ -60,7 +60,7 @@ bl_gdf = bl_gdf.to_crs(plz_gdf.crs)
 plz_with_bl = gpd.sjoin(plz_gdf, bl_gdf[['name','geometry']], how='left', predicate='intersects')
 plz_with_bl = plz_with_bl.reset_index(drop=True)
 
-# Hover-Text pro 2er-PLZ (Zeile für Zeile)
+# Hover-Text pro PLZ
 plz_with_bl['hover_text'] = plz_with_bl.apply(
     lambda row: f"{row['plz2']}\n{row['name'] if row['name'] else 'Unbekannt'}\n{row['consultant']}",
     axis=1
@@ -75,7 +75,7 @@ for consultant, group in plz_with_bl.groupby("consultant"):
     all_lats = []
     all_text = []
 
-    # Jede 2er-PLZ einzeln, aber Farbe pro Consultant
+    # Jede 2er-PLZ einzeln, Linien, Farbe pro Consultant
     for geom, hover in zip(group.geometry, group['hover_text']):
         if geom.geom_type == "Polygon":
             polys = [geom]
@@ -94,9 +94,7 @@ for consultant, group in plz_with_bl.groupby("consultant"):
         lon=all_lons,
         lat=all_lats,
         mode="lines",
-        fill="toself",
-        fillcolor=farbe_map[consultant],
-        line=dict(color="black", width=1),
+        line=dict(color=farbe_map[consultant], width=2),
         hoverinfo="text",
         text=all_text,
         name=consultant,
@@ -105,7 +103,7 @@ for consultant, group in plz_with_bl.groupby("consultant"):
     ))
 
 # -----------------------------
-# Bundesländer Linien
+# Bundesländer Linien (schwarz)
 for geom in bl_gdf.geometry:
     if geom.geom_type == "Polygon":
         lons, lats = zip(*geom.exterior.coords)
