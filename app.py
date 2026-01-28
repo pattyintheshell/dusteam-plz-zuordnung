@@ -42,7 +42,7 @@ plz_gdf['consultant'] = plz_gdf['plz2'].map(plz2_to_consultant).fillna("Unassign
 # -----------------------------
 # Hover-Text pro PLZ (untereinander)
 plz_gdf['hover_text'] = plz_gdf.apply(
-    lambda row: f"{row['plz2']}\n{row['name'] if 'name' in row else 'Unbekannt'}\n{row['consultant']}",
+    lambda row: f"{row['plz2']}\n{row['bundesland'] if 'bundesland' in row else 'Unbekannt'}\n{row['consultant']}",
     axis=1
 )
 
