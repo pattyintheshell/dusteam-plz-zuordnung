@@ -125,14 +125,15 @@ deck = pdk.Deck(
 st.pydeck_chart(deck, use_container_width=True)
 
 # -----------------------------
-# 9) Selbstgebaute Legende
+# 9) Rechte, vertikale Legende über Karte
 # -----------------------------
-st.markdown("### Legende")
-cols = st.columns(len(color_map))
-for i, (name, rgb) in enumerate(color_map.items()):
-    with cols[i % len(cols)]:
-        st.markdown(
-            f"<div style='display:flex; align-items:center;'>"
-            f"<div style='width:15px; height:15px; background-color:rgb{tuple(rgb)}; margin-right:5px;'></div>"
-            f"{name}</div>", unsafe_allow_html=True
-        )
+legend_html = "<div style='position:absolute; top:10px; right:10px; background:white; padding:10px; border:1px solid black; z-index:999;'>"
+for name, rgb in color_map.items():
+    legend_html += (
+        f"<div style='display:flex; align-items:center; margin-bottom:4px;'>"
+        f"<div style='width:15px; height:15px; background-color:rgb{tuple(rgb)}; margin-right:8px;'></div>"
+        f"{name}</div>"
+    )
+legend_html += "</div>"
+
+st.markdown(legend_html, unsafe_allow_html=True)
