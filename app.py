@@ -54,12 +54,11 @@ plz_gdf["hover_text"] = plz_gdf.apply(
 # Farben (RGBA)
 farbe_map = {
     "Dustin": "rgba(255, 223, 0, 0.4)",
-    "Patricia": "rgba(255, 0, 0, 0.4)",
     "Jonathan": "rgba(255, 102, 0, 0.4)",
-    "Philipp": "rgba(0, 100, 255, 0.4)",
-    "Tobias": "rgba(0, 100, 0, 0.4)",
-    "Kathrin": "rgba(160, 80, 210, 0.4)",
     "Sumak": "rgba(0, 206, 209, 0.4)",
+    "Kathrin": "rgba(160, 80, 210, 0.4)",
+    "Tobias": "rgba(0, 100, 0, 0.4)",
+    "Philipp": "rgba(0, 100, 255, 0.4)",
     "Vanessa": "rgba(255, 102, 204, 0.4)",
     "Sebastian": "rgba(110, 210, 110, 0.4)",
     "Unassigned": "rgba(200, 200, 200, 0.4)"
