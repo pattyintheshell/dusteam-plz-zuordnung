@@ -49,54 +49,114 @@ bl_gdf = bl_gdf.to_crs(epsg=4326)
 
 
 # -----------------------------
-# PLZ bereinigen und PLZ2 extrahieren
-#
-# str.replace entfernt mögliche ".0"-Endungen.
-# zfill(5) ergänzt führende Nullen, zum Beispiel:
-# 1067 -> 01067
-plz_gdf["plz_clean"] = (
-    plz_gdf["plz"]
-    .astype(str)
-    .str.strip()
-    .str.replace(r"\.0$", "", regex=True)
-    .str.zfill(5)
-)
+# PLZ2 korrekt aufbereiten
+def extract_plz2(value) -> str:
+    value = str(value).strip()
 
-plz_gdf["plz2"] = plz_gdf["plz_clean"].str[:2]
+    # Mögliche Dezimalendung entfernen:
+    # "77.0" -> "77"
+    if value.endswith(".0"):
+        value = value[:-2]
+
+    # Das GeoJSON enthält bereits PLZ2-Werte
+    # wie "01", "10" oder "77".
+    if len(value) <= 2:
+        return value.zfill(2)
+
+    # Unterstützt zusätzlich vier- oder fünfstellige PLZ-Werte.
+    return value.zfill(5)[:2]
+
+
+plz_gdf["plz2"] = plz_gdf["plz"].apply(extract_plz2)
 
 
 # -----------------------------
 # Consultant-Zuordnung
 plz_mapping = {
     "Dustin": [
-        "77", "78", "79", "88"
+        "77",
+        "78",
+        "79",
+        "88",
     ],
     "Jonathan": [
-        "68", "69", "70", "71", "72",
-        "73", "74", "75", "76", "89"
+        "68",
+        "69",
+        "70",
+        "71",
+        "72",
+        "73",
+        "74",
+        "75",
+        "76",
+        "89",
     ],
     "Sumak": [
-        "81", "82", "83", "84", "90",
-        "91", "92", "93", "94", "95",
-        "96", "97"
+        "81",
+        "82",
+        "83",
+        "84",
+        "90",
+        "91",
+        "92",
+        "93",
+        "94",
+        "95",
+        "96",
+        "97",
     ],
     "Kathrin": [
-        "80", "85", "86", "87"
+        "80",
+        "85",
+        "86",
+        "87",
     ],
     "Philipp": [
-        "32", "33", "40", "41", "42",
-        "43", "44", "45", "46", "47",
-        "48", "50", "51", "52", "53",
-        "56", "57", "58", "59"
+        "32",
+        "33",
+        "40",
+        "41",
+        "42",
+        "43",
+        "44",
+        "45",
+        "46",
+        "47",
+        "48",
+        "50",
+        "51",
+        "52",
+        "53",
+        "56",
+        "57",
+        "58",
+        "59",
     ],
     "Vanessa": [
-        "10", "11", "12", "13",
-        "20", "21", "22"
+        "10",
+        "11",
+        "12",
+        "13",
+        "20",
+        "21",
+        "22",
     ],
     "Sebastian": [
-        "01", "02", "03", "04", "05",
-        "06", "07", "08", "09", "14",
-        "15", "16", "17", "18", "19"
+        "01",
+        "02",
+        "03",
+        "04",
+        "05",
+        "06",
+        "07",
+        "08",
+        "09",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
     ],
 }
 
@@ -118,9 +178,7 @@ plz_gdf["consultant"] = (
 # -----------------------------
 # Hover-Text
 plz_gdf["hover_text"] = (
-    "PLZ: "
-    + plz_gdf["plz_clean"]
-    + "<br>PLZ-Gebiet: "
+    "PLZ-Gebiet: "
     + plz_gdf["plz2"]
     + "<br>Consultant: "
     + plz_gdf["consultant"]
@@ -130,8 +188,8 @@ plz_gdf["hover_text"] = (
 # -----------------------------
 # Farben
 #
-# Hex-Farben werden verwendet, weil die Transparenz
-# separat über marker.opacity gesteuert wird.
+# Die Transparenz wird weiter unten separat
+# über marker.opacity gesteuert.
 farbe_map = {
     "Dustin": "#FFDF00",
     "Jonathan": "#FF6600",
@@ -144,6 +202,8 @@ farbe_map = {
 }
 
 
+# -----------------------------
+# Reihenfolge in der Legende
 legend_order = [
     "Dustin",
     "Jonathan",
@@ -163,8 +223,6 @@ fig = go.Figure()
 
 # -----------------------------
 # Farbige PLZ-Flächen
-#
-# Choroplethmap ist für gefüllte GeoJSON-Polygone vorgesehen.
 for consultant in legend_order:
     color = farbe_map[consultant]
 
@@ -175,7 +233,7 @@ for consultant in legend_order:
     if subset.empty:
         continue
 
-    # Eindeutige IDs erzeugen
+    # Eindeutige ID für jedes GeoJSON-Feature
     subset["feature_id"] = subset.index.astype(str)
 
     # GeoDataFrame in GeoJSON umwandeln
@@ -183,12 +241,10 @@ for consultant in legend_order:
         subset.set_index("feature_id").to_json()
     )
 
-    locations = subset["feature_id"].tolist()
-
     fig.add_trace(
         go.Choroplethmap(
             geojson=subset_geojson,
-            locations=locations,
+            locations=subset["feature_id"].tolist(),
             featureidkey="id",
             z=[1] * len(subset),
             text=subset["hover_text"].tolist(),
@@ -252,7 +308,7 @@ plz2_gdf = plz_gdf.dissolve(
 )
 
 
-# Punkt innerhalb jedes PLZ2-Gebiets für die Beschriftung
+# Punkt innerhalb jedes PLZ2-Gebiets
 label_points = plz2_gdf.geometry.representative_point()
 
 
@@ -296,7 +352,7 @@ for consultant in legend_order:
 
 
 # -----------------------------
-# Layout
+# Kartenlayout
 fig.update_layout(
     map=dict(
         style="carto-positron",
