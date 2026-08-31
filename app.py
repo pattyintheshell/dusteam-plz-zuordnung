@@ -1,9 +1,10 @@
-import streamlit as st
+import json
+from io import BytesIO
+
 import geopandas as gpd
 import plotly.graph_objects as go
 import requests
-from io import BytesIO
-import numpy as np
+import streamlit as st
 
 
 # -----------------------------
@@ -14,11 +15,13 @@ st.title("Marktaufteilung DE Perm Embedded")
 
 # -----------------------------
 # GeoJSON laden
+@st.cache_data
 def load_geojson(url: str) -> gpd.GeoDataFrame:
-    response = requests.get(url, timeout=60)
-
-    if response.status_code != 200:
-        st.error(f"Fehler beim Laden der Datei: {response.status_code}")
+    try:
+        response = requests.get(url, timeout=60)
+        response.raise_for_status()
+    except requests.RequestException as error:
+        st.error(f"Fehler beim Laden der GeoJSON-Datei: {error}")
         st.stop()
 
     return gpd.read_file(BytesIO(response.content))
@@ -31,7 +34,8 @@ PLZ_URL = (
 
 BL_URL = (
     "https://github.com/pattyintheshell/dusteam-plz-zuordnung/"
-    "releases/download/v1.0-bundeslaender/bundeslaender_deutschland.geojson"
+    "releases/download/v1.0-bundeslaender/"
+    "bundeslaender_deutschland.geojson"
 )
 
 plz_gdf = load_geojson(PLZ_URL)
@@ -39,38 +43,69 @@ bl_gdf = load_geojson(BL_URL)
 
 
 # -----------------------------
-# Koordinatensystem für Längen- und Breitengrade
+# Koordinatensystem für Plotly
 plz_gdf = plz_gdf.to_crs(epsg=4326)
 bl_gdf = bl_gdf.to_crs(epsg=4326)
 
 
 # -----------------------------
-# PLZ2 extrahieren
-plz_gdf["plz2"] = plz_gdf["plz"].astype(str).str.zfill(5).str[:2]
+# PLZ bereinigen und PLZ2 extrahieren
+#
+# str.replace entfernt mögliche ".0"-Endungen.
+# zfill(5) ergänzt führende Nullen, zum Beispiel:
+# 1067 -> 01067
+plz_gdf["plz_clean"] = (
+    plz_gdf["plz"]
+    .astype(str)
+    .str.strip()
+    .str.replace(r"\.0$", "", regex=True)
+    .str.zfill(5)
+)
+
+plz_gdf["plz2"] = plz_gdf["plz_clean"].str[:2]
 
 
 # -----------------------------
-# Consultant-Mapping
+# Consultant-Zuordnung
 plz_mapping = {
-    "Dustin": ["77", "78", "79", "88"],
-    "Jonathan": ["68", "69", "70", "71", "72", "73", "74", "75", "76", "89"],
-    "Sumak": ["81", "82", "83", "84", "90", "91", "92", "93", "94", "95", "96", "97"],
-    "Kathrin": ["80", "85", "86", "87"],
-    "Philipp": [
-        "32", "33", "40", "41", "42", "43", "44", "45", "46",
-        "47", "48", "50", "51", "52", "53", "56", "57", "58", "59"
+    "Dustin": [
+        "77", "78", "79", "88"
     ],
-    "Vanessa": ["10", "11", "12", "13", "20", "21", "22"],
+    "Jonathan": [
+        "68", "69", "70", "71", "72",
+        "73", "74", "75", "76", "89"
+    ],
+    "Sumak": [
+        "81", "82", "83", "84", "90",
+        "91", "92", "93", "94", "95",
+        "96", "97"
+    ],
+    "Kathrin": [
+        "80", "85", "86", "87"
+    ],
+    "Philipp": [
+        "32", "33", "40", "41", "42",
+        "43", "44", "45", "46", "47",
+        "48", "50", "51", "52", "53",
+        "56", "57", "58", "59"
+    ],
+    "Vanessa": [
+        "10", "11", "12", "13",
+        "20", "21", "22"
+    ],
     "Sebastian": [
-        "01", "02", "03", "04", "05", "06", "07", "08", "09",
-        "14", "15", "16", "17", "18", "19"
+        "01", "02", "03", "04", "05",
+        "06", "07", "08", "09", "14",
+        "15", "16", "17", "18", "19"
     ],
 }
 
+
+# PLZ2 -> Consultant
 plz2_to_consultant = {
-    plz: consultant
-    for consultant, plz_list in plz_mapping.items()
-    for plz in plz_list
+    plz2: consultant
+    for consultant, plz2_list in plz_mapping.items()
+    for plz2 in plz2_list
 }
 
 plz_gdf["consultant"] = (
@@ -82,24 +117,43 @@ plz_gdf["consultant"] = (
 
 # -----------------------------
 # Hover-Text
-plz_gdf["hover_text"] = plz_gdf.apply(
-    lambda row: f"{row['plz2']} {row['consultant']}",
-    axis=1
+plz_gdf["hover_text"] = (
+    "PLZ: "
+    + plz_gdf["plz_clean"]
+    + "<br>PLZ-Gebiet: "
+    + plz_gdf["plz2"]
+    + "<br>Consultant: "
+    + plz_gdf["consultant"]
 )
 
 
 # -----------------------------
 # Farben
+#
+# Hex-Farben werden verwendet, weil die Transparenz
+# separat über marker.opacity gesteuert wird.
 farbe_map = {
-    "Dustin": "rgba(255, 223, 0, 0.4)",
-    "Jonathan": "rgba(255, 102, 0, 0.4)",
-    "Sumak": "rgba(0, 206, 209, 0.4)",
-    "Kathrin": "rgba(160, 80, 210, 0.4)",
-    "Philipp": "rgba(0, 100, 255, 0.4)",
-    "Vanessa": "rgba(255, 102, 204, 0.4)",
-    "Sebastian": "rgba(110, 210, 110, 0.4)",
-    "Unassigned": "rgba(200, 200, 200, 0.4)",
+    "Dustin": "#FFDF00",
+    "Jonathan": "#FF6600",
+    "Sumak": "#00CED1",
+    "Kathrin": "#A050D2",
+    "Philipp": "#0064FF",
+    "Vanessa": "#FF66CC",
+    "Sebastian": "#6ED26E",
+    "Unassigned": "#C8C8C8",
 }
+
+
+legend_order = [
+    "Dustin",
+    "Jonathan",
+    "Kathrin",
+    "Philipp",
+    "Sebastian",
+    "Sumak",
+    "Vanessa",
+    "Unassigned",
+]
 
 
 # -----------------------------
@@ -108,54 +162,51 @@ fig = go.Figure()
 
 
 # -----------------------------
-# PLZ-Flächen
-for consultant, color in farbe_map.items():
-    subset = plz_gdf[plz_gdf["consultant"] == consultant]
+# Farbige PLZ-Flächen
+#
+# Choroplethmap ist für gefüllte GeoJSON-Polygone vorgesehen.
+for consultant in legend_order:
+    color = farbe_map[consultant]
+
+    subset = plz_gdf[
+        plz_gdf["consultant"] == consultant
+    ].copy()
 
     if subset.empty:
         continue
 
-    lon_arrays = []
-    lat_arrays = []
-    text_arrays = []
+    # Eindeutige IDs erzeugen
+    subset["feature_id"] = subset.index.astype(str)
 
-    for geom, hover in zip(subset.geometry, subset["hover_text"]):
-        if geom is None or geom.is_empty:
-            continue
+    # GeoDataFrame in GeoJSON umwandeln
+    subset_geojson = json.loads(
+        subset.set_index("feature_id").to_json()
+    )
 
-        if geom.geom_type == "Polygon":
-            polygons = [geom]
-        elif geom.geom_type == "MultiPolygon":
-            polygons = list(geom.geoms)
-        else:
-            continue
-
-        for polygon in polygons:
-            lons, lats = zip(*polygon.exterior.coords)
-
-            lon_arrays.append(
-                np.concatenate([np.asarray(lons), [np.nan]])
-            )
-            lat_arrays.append(
-                np.concatenate([np.asarray(lats), [np.nan]])
-            )
-            text_arrays.append(
-                np.asarray([hover] * len(lons) + [None], dtype=object)
-            )
-
-    if not lon_arrays:
-        continue
+    locations = subset["feature_id"].tolist()
 
     fig.add_trace(
-        go.Scattermap(
-            lon=np.concatenate(lon_arrays).tolist(),
-            lat=np.concatenate(lat_arrays).tolist(),
-            mode="lines",
-            fill="toself",
-            fillcolor=color,
-            line=dict(color="black", width=1),
-            text=np.concatenate(text_arrays).tolist(),
-            hoverinfo="text",
+        go.Choroplethmap(
+            geojson=subset_geojson,
+            locations=locations,
+            featureidkey="id",
+            z=[1] * len(subset),
+            text=subset["hover_text"].tolist(),
+            hovertemplate="%{text}<extra></extra>",
+            colorscale=[
+                [0, color],
+                [1, color],
+            ],
+            zmin=0,
+            zmax=1,
+            showscale=False,
+            marker=dict(
+                opacity=0.55,
+                line=dict(
+                    color="black",
+                    width=0.5,
+                ),
+            ),
             name=consultant,
             showlegend=False,
         )
@@ -163,33 +214,15 @@ for consultant, color in farbe_map.items():
 
 
 # -----------------------------
-# Dummy-Traces für die Legende
-for consultant, color in farbe_map.items():
-    fig.add_trace(
-        go.Scattermap(
-            lon=[None],
-            lat=[None],
-            mode="markers",
-            marker=dict(
-                size=20,
-                color=color,
-            ),
-            name=consultant,
-            showlegend=True,
-        )
-    )
-
-
-# -----------------------------
 # Bundesländer-Grenzen
-for geom in bl_gdf.geometry:
-    if geom is None or geom.is_empty:
+for geometry in bl_gdf.geometry:
+    if geometry is None or geometry.is_empty:
         continue
 
-    if geom.geom_type == "Polygon":
-        polygons = [geom]
-    elif geom.geom_type == "MultiPolygon":
-        polygons = list(geom.geoms)
+    if geometry.geom_type == "Polygon":
+        polygons = [geometry]
+    elif geometry.geom_type == "MultiPolygon":
+        polygons = list(geometry.geoms)
     else:
         continue
 
@@ -201,7 +234,10 @@ for geom in bl_gdf.geometry:
                 lon=list(lons),
                 lat=list(lats),
                 mode="lines",
-                line=dict(color="black", width=2),
+                line=dict(
+                    color="black",
+                    width=2,
+                ),
                 hoverinfo="skip",
                 showlegend=False,
             )
@@ -209,13 +245,19 @@ for geom in bl_gdf.geometry:
 
 
 # -----------------------------
-# PLZ2-Beschriftungen
-plz2_gdf = plz_gdf.dissolve(by="plz2")
+# PLZ2-Gebiete zusammenfassen
+plz2_gdf = plz_gdf.dissolve(
+    by="plz2",
+    aggfunc="first",
+)
 
-# representative_point liegt im jeweiligen Gebiet und eignet sich
-# deshalb besser für Beschriftungen als ein einfacher Mittelpunkt.
+
+# Punkt innerhalb jedes PLZ2-Gebiets für die Beschriftung
 label_points = plz2_gdf.geometry.representative_point()
 
+
+# -----------------------------
+# PLZ2-Beschriftungen
 fig.add_trace(
     go.Scattermap(
         lon=label_points.x.tolist(),
@@ -223,7 +265,10 @@ fig.add_trace(
         mode="text",
         text=plz2_gdf.index.astype(str).tolist(),
         textposition="middle center",
-        textfont=dict(size=10, color="black"),
+        textfont=dict(
+            size=10,
+            color="black",
+        ),
         hoverinfo="skip",
         showlegend=False,
     )
@@ -231,12 +276,23 @@ fig.add_trace(
 
 
 # -----------------------------
-# Legenden-Reihenfolge
-legend_order = sorted(
-    consultant
-    for consultant in farbe_map
-    if consultant != "Unassigned"
-) + ["Unassigned"]
+# Legendeneinträge
+for consultant in legend_order:
+    fig.add_trace(
+        go.Scattermap(
+            lon=[None],
+            lat=[None],
+            mode="markers",
+            marker=dict(
+                size=18,
+                color=farbe_map[consultant],
+                opacity=0.7,
+            ),
+            name=consultant,
+            showlegend=True,
+            hoverinfo="skip",
+        )
+    )
 
 
 # -----------------------------
@@ -252,7 +308,12 @@ fig.update_layout(
     ),
     height=800,
     width=800,
-    margin=dict(l=0, r=0, t=0, b=0),
+    margin=dict(
+        l=0,
+        r=0,
+        t=0,
+        b=0,
+    ),
     legend=dict(
         title=dict(
             text="Consultants",
@@ -262,7 +323,10 @@ fig.update_layout(
                 color="black",
             ),
         ),
-        font=dict(size=16, color="black"),
+        font=dict(
+            size=16,
+            color="black",
+        ),
         bgcolor="rgba(255, 255, 255, 0.85)",
         bordercolor="rgba(0, 0, 0, 0.2)",
         borderwidth=1,
@@ -273,21 +337,6 @@ fig.update_layout(
         yanchor="top",
         traceorder="normal",
     ),
-)
-
-
-# -----------------------------
-# Legendeneinträge sortieren
-sorted_legend_traces = []
-
-for name in legend_order:
-    for trace in fig.data:
-        if trace.name == name and trace.showlegend:
-            sorted_legend_traces.append(trace)
-
-fig.data = tuple(
-    [trace for trace in fig.data if not trace.showlegend]
-    + sorted_legend_traces
 )
 
 
