@@ -1,4 +1,3 @@
-```python
 import json
 from io import BytesIO
 
@@ -54,17 +53,12 @@ bl_gdf = bl_gdf.to_crs(epsg=4326)
 def extract_plz2(value) -> str:
     value = str(value).strip()
 
-    # Mögliche Dezimalendung entfernen:
-    # "77.0" -> "77"
     if value.endswith(".0"):
         value = value[:-2]
 
-    # Das GeoJSON enthält bereits PLZ2-Werte
-    # wie "01", "10" oder "77".
     if len(value) <= 2:
         return value.zfill(2)
 
-    # Unterstützt zusätzlich vier- oder fünfstellige PLZ-Werte.
     return value.zfill(5)[:2]
 
 
@@ -153,10 +147,8 @@ for consultant in legend_order:
     if subset.empty:
         continue
 
-    # Eindeutige ID für jedes GeoJSON-Feature
     subset["feature_id"] = subset.index.astype(str)
 
-    # GeoDataFrame in GeoJSON umwandeln
     subset_geojson = json.loads(
         subset.set_index("feature_id").to_json()
     )
@@ -227,8 +219,6 @@ plz2_gdf = plz_gdf.dissolve(
     aggfunc="first",
 )
 
-
-# Punkt innerhalb jedes PLZ2-Gebiets
 label_points = plz2_gdf.geometry.representative_point()
 
 
@@ -322,4 +312,3 @@ st.plotly_chart(
     fig,
     use_container_width=False,
 )
-```
