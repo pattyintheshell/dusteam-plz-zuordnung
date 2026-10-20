@@ -105,15 +105,15 @@ plz_gdf["hover_text"] = (
 # -----------------------------
 # Farben
 farbe_map = {
-    "Dustin": "#FFDF00",
-    "Jonathan": "#FF6600",
-    "Laith": "#A050D2",
-    "Philipp": "#0064FF",
-    "Sebastian": "#6ED26E",
-    "Sumak": "#00CED1",
-    "Lisa": "#006400",
-    "Vanessa": "#FF66CC",
-    "Unassigned": "#C8C8C8",
+    "Dustin": "#FFDF00", #Gelb
+    "Jonathan": "#FF6600", #Orange
+    "Laith": "#006400", #Dunkelgrün
+    "Philipp": "#0064FF", #Dunkelblau
+    "Sebastian": "#6ED26E", #Hellgrün
+    "Sumak": "#00CED1", #Hellblau
+    "Lisa": "#A050D2", #Lila
+    "Vanessa": "#FF66CC", #Pink
+    "Unassigned": "#C8C8C8", #Grau
 }
 
 # -----------------------------
